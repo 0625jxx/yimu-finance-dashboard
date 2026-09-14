@@ -11,11 +11,17 @@ test("应用入口显式连接 Model、View 和 Controller", async () => {
   assert.match(source, /AppController/);
 });
 
-test("主页面包含看板、交易、账户、预算和目标五个核心视图", async () => {
+test("主页面包含六个完整业务视图", async () => {
   const html = await read("../index.html");
-  for (const page of ["dashboard", "transactions", "accounts", "budgets", "goals"]) {
+  for (const page of ["dashboard", "transactions", "accounts", "budgets", "goals", "reports"]) {
     assert.match(html, new RegExp(`data-page=["']${page}["']`));
   }
+});
+
+test("提交版提供报表入口和彻底删除个人数据操作", async () => {
+  const html = await read("../index.html");
+  assert.match(html, /data-route="reports"/);
+  assert.match(html, /data-action="clear-data"/);
 });
 
 test("高影响和录入操作使用可访问的原生对话框与明确标签", async () => {

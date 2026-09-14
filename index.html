@@ -30,9 +30,13 @@
           <button class="nav-item" type="button" data-route="goals">
             <span aria-hidden="true">◇</span><b>目标</b>
           </button>
+          <button class="nav-item" type="button" data-route="reports">
+            <span aria-hidden="true">▥</span><b>报表</b>
+          </button>
         </nav>
         <div class="sidebar-foot">
           <button class="quiet-action" type="button" data-action="export-data">导出数据</button>
+          <button class="quiet-action danger-text" type="button" data-action="clear-data">清除全部数据</button>
           <p>数据仅保存在此浏览器</p>
         </div>
       </aside>
@@ -99,6 +103,14 @@
               <button class="secondary-button" type="button" data-action="new-goal">添加目标</button>
             </div>
             <div id="goal-list" class="goal-page-list"></div>
+          </section>
+
+          <section class="page" data-page="reports" aria-labelledby="reports-title" hidden>
+            <div class="section-heading">
+              <div><p class="section-kicker">从记录看见趋势</p><h2 id="reports-title">财务分析报表</h2></div>
+              <button class="secondary-button" type="button" data-action="export-data">导出原始数据</button>
+            </div>
+            <div id="report-content"></div>
           </section>
         </main>
       </div>

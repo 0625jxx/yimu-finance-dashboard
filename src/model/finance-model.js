@@ -150,6 +150,29 @@ export const findDuplicateTransactions = (existing, incoming) => {
   return incoming.filter((transaction) => keys.has(duplicateKey(transaction))).map(({ id }) => id);
 };
 
+export const monthlyCashFlowSeries = (transactions, endMonth, count = 6) => {
+  const [year, month] = endMonth.split("-").map(Number);
+  return Array.from({ length: count }, (_, index) => {
+    const date = new Date(Date.UTC(year, month - count + index, 1));
+    const key = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+    const period = transactions.filter((transaction) => transaction.date.startsWith(key));
+    const incomeCents = period.filter(({ type }) => type === "income").reduce((sum, item) => sum + item.amountCents, 0);
+    const expenseCents = period.filter(({ type }) => type === "expense").reduce((sum, item) => sum + item.amountCents, 0);
+    return { month: key, incomeCents, expenseCents, netCents: incomeCents - expenseCents };
+  });
+};
+
+export const categoryExpenseBreakdown = (transactions, month) => {
+  const totals = new Map();
+  transactions.filter(({ type, date }) => type === "expense" && date.startsWith(month)).forEach((transaction) => {
+    totals.set(transaction.category, (totals.get(transaction.category) ?? 0) + transaction.amountCents);
+  });
+  const total = [...totals.values()].reduce((sum, amount) => sum + amount, 0);
+  return [...totals.entries()]
+    .map(([category, amountCents]) => ({ category, amountCents, ratio: total ? amountCents / total : 0 }))
+    .sort((left, right) => right.amountCents - left.amountCents);
+};
+
 export const createFinanceStore = (initialState, persist = () => {}) => {
   const sourceState = clone(initialState);
   let state = {
@@ -246,6 +269,10 @@ export const createFinanceStore = (initialState, persist = () => {}) => {
       else state.budgets.push(clone(budget));
       publish("budget:changed");
     },
+    removeBudget(month, category) {
+      state.budgets = state.budgets.filter((budget) => budget.month !== month || budget.category !== category);
+      publish("budget:removed");
+    },
     saveGoal(goal) {
       if (!Number.isInteger(goal.targetCents) || goal.targetCents <= 0) throw new Error("目标金额必须大于 0");
       if (!Number.isInteger(goal.currentCents) || goal.currentCents < 0) throw new Error("当前金额不能小于 0");
@@ -258,6 +285,10 @@ export const createFinanceStore = (initialState, persist = () => {}) => {
     removeGoal(id) {
       state.goals = state.goals.filter((goal) => goal.id !== id);
       publish("goal:removed");
+    },
+    clearAllData() {
+      state = { accounts: [], transactions: [], budgets: [], goals: [], importBatches: [] };
+      publish("state:cleared");
     },
     replaceState(nextState) {
       const replacement = clone(nextState);

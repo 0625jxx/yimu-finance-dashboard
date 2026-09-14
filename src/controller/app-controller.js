@@ -73,16 +73,24 @@ export class AppController {
       "new-goal": () => this.openGoalDialog(),
       "edit-goal": () => this.openGoalDialog(this.store.getState().goals.find(({ id }) => id === actionButton.dataset.id)),
       "delete-goal": () => this.deleteGoal(actionButton.dataset.id),
+      "delete-budget": () => this.deleteBudget(actionButton.dataset.month, actionButton.dataset.category),
       "undo-import": () => this.undoImport(actionButton.dataset.id),
       "toggle-privacy": () => { this.ui.hideAmounts = !this.ui.hideAmounts; this.render(); },
       "import-csv": () => this.document.querySelector("#csv-input").click(),
       "export-data": () => this.exportData(),
+      "clear-data": () => this.clearData(),
       "delete-transaction": () => this.deleteTransaction(actionButton.dataset.id),
     };
     actions[actionButton.dataset.action]?.();
   }
 
   openTransactionDialog(transaction = null) {
+    if (!this.store.getState().accounts.length) {
+      this.ui.route = "accounts";
+      this.render();
+      this.view.showToast("请先添加一个账户，再记录交易");
+      return;
+    }
     const form = this.document.querySelector("#transaction-form");
     form.reset();
     form.elements.transactionId.value = transaction?.id ?? "";
@@ -207,6 +215,19 @@ export class AppController {
     if (!globalThis.confirm("删除后将无法继续跟踪这个目标。确认删除吗？")) return;
     this.store.removeGoal(id);
     this.view.showToast("目标已删除");
+  }
+
+  deleteBudget(month, category) {
+    if (!globalThis.confirm(`确认删除 ${month} 的“${category}”预算吗？交易记录不会受到影响。`)) return;
+    this.store.removeBudget(month, category);
+    this.view.showToast("预算已删除");
+  }
+
+  clearData() {
+    if (!globalThis.confirm("全部账户、交易、预算、目标和导入记录将永久删除，且无法撤销。确认彻底删除吗？")) return;
+    this.store.clearAllData();
+    this.ui.route = "dashboard";
+    this.view.showToast("全部个人财务数据已清除");
   }
 
   undoImport(id) {

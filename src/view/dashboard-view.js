@@ -1,4 +1,4 @@
-import { budgetProgress, calculateAccountBalance, calculateSummary } from "../model/finance-model.js";
+import { budgetProgress, calculateAccountBalance, calculateSummary, categoryExpenseBreakdown, monthlyCashFlowSeries } from "../model/finance-model.js";
 
 const currency = new Intl.NumberFormat("zh-CN", { style: "currency", currency: "CNY", minimumFractionDigits: 2 });
 const dateFormat = new Intl.DateTimeFormat("zh-CN", { month: "long", day: "numeric", weekday: "short" });
@@ -8,7 +8,7 @@ const escapeHtml = (value = "") => String(value).replace(/[&<>'"]/g, (character)
 const money = (cents) => currency.format(cents / 100);
 const typeLabels = { expense: "支出", income: "收入", transfer: "转账", adjustment: "调整" };
 const categoryIcons = { 餐饮: "餐", 交通: "行", 居住: "住", 购物: "购", 娱乐: "乐", 医疗: "医", 工资: "薪", 其他: "·", 转账: "转" };
-const pageTitles = { dashboard: "财务概览", transactions: "交易明细", accounts: "账户", budgets: "月度预算", goals: "财务目标" };
+const pageTitles = { dashboard: "财务概览", transactions: "交易明细", accounts: "账户", budgets: "月度预算", goals: "财务目标", reports: "分析报表" };
 
 const createChart = (transactions, month) => {
   const days = Array.from({ length: 30 }, (_, index) => index + 1);
@@ -44,6 +44,7 @@ export class DashboardView {
     this.accounts = documentRef.querySelector("#account-list");
     this.budgets = documentRef.querySelector("#budget-list");
     this.goals = documentRef.querySelector("#goal-list");
+    this.reports = documentRef.querySelector("#report-content");
     this.importBatches = documentRef.querySelector("#import-batches");
     this.toastTimer = null;
     documentRef.querySelector("#today-label").textContent = dateFormat.format(new Date());
@@ -68,6 +69,7 @@ export class DashboardView {
     this.renderAccounts(state);
     this.renderBudgets(state, ui.month);
     this.renderGoals(state);
+    this.renderReports(state, ui.month);
     this.renderImportBatches(state);
     this.syncAccountSelects(state.accounts);
   }
@@ -148,7 +150,7 @@ export class DashboardView {
       const spent = expenses.filter(({ category }) => category === budget.category).reduce((sum, transaction) => sum + transaction.amountCents, 0);
       const progress = budgetProgress(spent, budget.limitCents);
       const statusLabel = { normal: "进度正常", warning: "接近上限", over: "已经超支" }[progress.status];
-      return `<article class="panel budget-page-card"><div class="budget-label"><h3>${escapeHtml(budget.category)}</h3><span>${statusLabel}</span></div><div class="progress-track"><div class="progress-fill ${progress.status}" style="width:${Math.min(progress.ratio * 100, 100)}%"></div></div><div class="budget-numbers"><span>已使用<strong data-money>${money(spent)}</strong></span><span>剩余<strong data-money>${money(progress.remainingCents)}</strong></span><span>预算<strong data-money>${money(budget.limitCents)}</strong></span></div></article>`;
+      return `<article class="panel budget-page-card"><div class="budget-label"><h3>${escapeHtml(budget.category)}</h3><span>${statusLabel}</span></div><div class="progress-track"><div class="progress-fill ${progress.status}" style="width:${Math.min(progress.ratio * 100, 100)}%"></div></div><div class="budget-numbers"><span>已使用<strong data-money>${money(spent)}</strong></span><span>剩余<strong data-money>${money(progress.remainingCents)}</strong></span><span>预算<strong data-money>${money(budget.limitCents)}</strong></span></div><div class="card-actions"><button class="link-button danger-text" type="button" data-action="delete-budget" data-month="${escapeHtml(budget.month)}" data-category="${escapeHtml(budget.category)}">删除预算</button></div></article>`;
     }).join("");
     this.budgets.innerHTML = rows || '<div class="panel empty-state"><strong>这个月还没有预算</strong>先为最容易超支的分类设置额度。</div>';
   }
@@ -160,6 +162,33 @@ export class DashboardView {
       const status = goal.currentCents >= goal.targetCents ? "已完成" : "进行中";
       return `<article class="panel goal-card"><div class="goal-card-head"><div><span class="goal-type">${goal.type === "debt" ? "还债" : "储蓄"}</span><h3>${escapeHtml(goal.name)}</h3></div><span class="goal-status">${status}</span></div><div class="goal-progress-number"><strong>${Math.round(ratio * 100)}%</strong><span data-money>${money(goal.currentCents)} / ${money(goal.targetCents)}</span></div><div class="progress-track"><div class="progress-fill" style="width:${ratio * 100}%"></div></div><footer><span>还差 <b data-money>${money(remaining)}</b></span><span>目标日 ${escapeHtml(goal.targetDate || "未设置")}</span></footer><div class="card-actions"><button class="link-button" type="button" data-action="edit-goal" data-id="${escapeHtml(goal.id)}">更新进度</button><button class="link-button danger-text" type="button" data-action="delete-goal" data-id="${escapeHtml(goal.id)}">删除</button></div></article>`;
     }).join("") || '<div class="panel empty-state"><strong>还没有财务目标</strong>添加一个储蓄或还债目标，把计划变成可见进度。</div>';
+  }
+
+  renderReports(state, month) {
+    const summary = calculateSummary(state.accounts, state.transactions, month);
+    const series = monthlyCashFlowSeries(state.transactions, month, 6);
+    const breakdown = categoryExpenseBreakdown(state.transactions, month);
+    const maxFlow = Math.max(...series.flatMap((item) => [item.incomeCents, item.expenseCents]), 1);
+    const flowColumns = series.map((item) => {
+      const incomeHeight = Math.max((item.incomeCents / maxFlow) * 150, item.incomeCents ? 4 : 0);
+      const expenseHeight = Math.max((item.expenseCents / maxFlow) * 150, item.expenseCents ? 4 : 0);
+      return `<div class="flow-month"><div class="flow-bars"><i class="income-bar" style="height:${incomeHeight}px" title="收入 ${money(item.incomeCents)}"></i><i class="expense-bar" style="height:${expenseHeight}px" title="支出 ${money(item.expenseCents)}"></i></div><strong>${escapeHtml(item.month.slice(5))}月</strong><span data-money>${money(item.incomeCents - item.expenseCents)}</span></div>`;
+    }).join("");
+    const categoryRows = breakdown.map((item) => `<div class="category-report-row"><div class="category-report-label"><span class="category-icon" aria-hidden="true">${categoryIcons[item.category] ?? "·"}</span><div><strong>${escapeHtml(item.category)}</strong><small>${(item.ratio * 100).toFixed(1)}%</small></div></div><div class="category-meter"><i style="width:${Math.max(item.ratio * 100, 2)}%"></i></div><strong data-money>${money(item.amountCents)}</strong></div>`).join("");
+    const insight = summary.expenseCents === 0
+      ? "本月还没有支出记录，新增交易后即可生成分类洞察。"
+      : summary.netCashFlowCents >= 0
+        ? `本月现金流为正，结余 ${money(summary.netCashFlowCents)}，可以优先补充储蓄目标。`
+        : `本月支出高于收入 ${money(Math.abs(summary.netCashFlowCents))}，建议检查占比最高的消费分类。`;
+
+    this.reports.innerHTML = `<div class="report-summary">
+      <article class="panel report-metric"><span>本月收入</span><strong data-money>${money(summary.incomeCents)}</strong><small>不含账户间转账</small></article>
+      <article class="panel report-metric"><span>本月支出</span><strong data-money>${money(summary.expenseCents)}</strong><small>${breakdown.length} 个消费分类</small></article>
+      <article class="panel report-metric"><span>本月结余</span><strong class="${summary.netCashFlowCents < 0 ? "negative" : "positive"}" data-money>${money(summary.netCashFlowCents)}</strong><small>${summary.savingsRate === null ? "暂无结余率" : `结余率 ${(summary.savingsRate * 100).toFixed(1)}%`}</small></article>
+    </div><div class="report-grid">
+      <article class="panel report-panel"><div class="panel-title-row"><div><h3>六个月现金流</h3><p>绿色为收入，橙色为支出；下方为月度净额</p></div></div><div class="six-month-chart" role="img" aria-label="最近六个月收入支出柱状图">${flowColumns}</div></article>
+      <article class="panel report-panel"><div class="panel-title-row"><div><h3>支出分类结构</h3><p>${escapeHtml(month)} · 按金额从高到低</p></div></div><div class="category-report-list">${categoryRows || '<div class="empty-state compact"><strong>暂无支出数据</strong>记录本月支出后自动生成分类结构。</div>'}</div></article>
+    </div><article class="panel insight-card"><span>本月洞察</span><p>${escapeHtml(insight)}</p></article>`;
   }
 
   renderImportBatches(state) {

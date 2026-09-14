@@ -5,9 +5,11 @@ import {
   budgetProgress,
   calculateAccountBalance,
   calculateSummary,
+  categoryExpenseBreakdown,
   createFinanceStore,
   findDuplicateTransactions,
   parseTransactionCsv,
+  monthlyCashFlowSeries,
 } from "../src/model/finance-model.js";
 
 const accounts = [
@@ -150,4 +152,36 @@ test("删除目标只影响指定目标", () => {
   ] });
   store.removeGoal("goal-1");
   assert.deepEqual(store.getState().goals.map(({ id }) => id), ["goal-2"]);
+});
+
+test("六个月现金流序列按月份汇总并排除转账", () => {
+  const series = monthlyCashFlowSeries([
+    ...transactions,
+    { id: "aug", type: "expense", amountCents: 20_000, accountId: "cash", date: "2026-08-10", category: "餐饮" },
+  ], "2026-09", 2);
+  assert.deepEqual(series, [
+    { month: "2026-08", incomeCents: 0, expenseCents: 20_000, netCents: -20_000 },
+    { month: "2026-09", incomeCents: 500_000, expenseCents: 11_000, netCents: 489_000 },
+  ]);
+});
+
+test("支出分类结构按金额降序并计算占比", () => {
+  assert.deepEqual(categoryExpenseBreakdown(transactions, "2026-09"), [
+    { category: "餐饮", amountCents: 11_000, ratio: 1 },
+  ]);
+});
+
+test("预算可以删除且发布变更事件", () => {
+  const store = createFinanceStore({ accounts, transactions: [], budgets: [{ month: "2026-09", category: "餐饮", limitCents: 10_000 }] });
+  const events = [];
+  store.subscribe((_state, event) => events.push(event));
+  store.removeBudget("2026-09", "餐饮");
+  assert.equal(store.getState().budgets.length, 0);
+  assert.deepEqual(events, ["budget:removed"]);
+});
+
+test("彻底清空会移除全部个人财务数据", () => {
+  const store = createFinanceStore({ accounts, transactions, budgets: [{ month: "2026-09", category: "餐饮" }], goals: [{ id: "g" }], importBatches: [{ id: "b" }] });
+  store.clearAllData();
+  assert.deepEqual(store.getState(), { accounts: [], transactions: [], budgets: [], goals: [], importBatches: [] });
 });

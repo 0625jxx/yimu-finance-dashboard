@@ -62,6 +62,11 @@ with sync_playwright() as playwright:
     assert page.locator("#goal-list").get_by_text("年度旅行基金", exact=True).is_visible()
     page.screenshot(path=str(ARTIFACTS / "goals-desktop.png"), full_page=True)
 
+    page.locator("[data-route='reports']").first.click()
+    assert page.locator("#report-content").get_by_text("六个月现金流", exact=True).is_visible()
+    assert page.locator("#report-content").get_by_text("支出分类结构", exact=True).is_visible()
+    page.screenshot(path=str(ARTIFACTS / "reports-desktop.png"), full_page=True)
+
     page.locator("[data-route='dashboard']").first.click()
     page.screenshot(path=str(ARTIFACTS / "dashboard-desktop.png"), full_page=True)
     page.set_viewport_size({"width": 390, "height": 844})
@@ -70,4 +75,4 @@ with sync_playwright() as playwright:
     assert errors == [], f"Browser errors: {errors}"
     browser.close()
 
-print("Browser smoke test passed: transaction edit, import undo, budget, goals, responsive layout")
+print("Browser smoke test passed: transaction edit, import undo, budget, goals, reports, responsive layout")

@@ -20,7 +20,7 @@ if (Test-Path -LiteralPath $productDocument -PathType Leaf) {
         '## 6. 信息架构',
         '## 7. 主要功能设计',
         '## 8. 关键指标与计算口径',
-        '## 12. MVP 验收标准',
+        '## 12. 课程提交版验收标准',
         '## 14. 版本规划',
         '## 16. 待确认事项'
     )
