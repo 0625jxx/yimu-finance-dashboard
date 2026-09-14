@@ -34,6 +34,10 @@ test("提交目录包含可执行程序、报告和答辩材料", async () => {
     const file = await stat(new URL(relativePath, import.meta.url));
     assert.ok(file.size > minimumBytes, `${relativePath} 应为非空、可提交的成品文件`);
   }
+  const generator = await read("../scripts/generate-deliverables.cjs");
+  for (const member of ["蓝思钰 52302042011", "姜萱萱 52302042008", "刘晓盼 52302042019", "王晨 52302042035", "朱婷婷 52302042055"]) {
+    assert.match(generator, new RegExp(member), `交付材料生成器应包含成员信息：${member}`);
+  }
 });
 
 test("课程提交说明不再使用 MVP 定位", async () => {

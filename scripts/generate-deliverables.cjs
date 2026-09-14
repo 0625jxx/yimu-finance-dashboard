@@ -61,16 +61,17 @@ const imageParagraph = (file, width, height, caption) => [
   new Paragraph({ alignment: AlignmentType.CENTER, children: [new ImageRun({ data: fs.readFileSync(file), transformation: { width, height }, type: "png" })], spacing: { before: 120, after: 80 } }),
   new Paragraph({ alignment: AlignmentType.CENTER, children: [text(caption, { italics: true, size: 18, color: colors.soft })], spacing: { after: 180 } }),
 ];
-const cell = (value, header = false) => new TableCell({
+const cell = (value, header = false, width) => new TableCell({
+  width: { size: width, type: WidthType.DXA },
   shading: header ? { type: ShadingType.CLEAR, fill: colors.ink, color: "auto" } : { type: ShadingType.CLEAR, fill: colors.paper, color: "auto" },
   verticalAlign: VerticalAlign.CENTER,
   margins: { top: 100, bottom: 100, left: 120, right: 120 },
   children: [new Paragraph({ children: [text(value, { bold: header, color: header ? colors.white : colors.ink, size: 19 })] })],
 });
 const table = (headers, rows, widths) => new Table({
-  width: { size: 100, type: WidthType.PERCENTAGE },
+  width: { size: widths.reduce((sum, width) => sum + width, 0), type: WidthType.DXA },
   columnWidths: widths,
-  rows: [new TableRow({ children: headers.map((v) => cell(v, true)), tableHeader: true }), ...rows.map((row) => new TableRow({ children: row.map((v) => cell(v)) }))],
+  rows: [new TableRow({ children: headers.map((v, index) => cell(v, true, widths[index])), tableHeader: true }), ...rows.map((row) => new TableRow({ children: row.map((v, index) => cell(v, false, widths[index])) }))],
   borders: { top: { style: BorderStyle.SINGLE, color: colors.line, size: 4 }, bottom: { style: BorderStyle.SINGLE, color: colors.line, size: 4 }, left: { style: BorderStyle.SINGLE, color: colors.line, size: 4 }, right: { style: BorderStyle.SINGLE, color: colors.line, size: 4 }, insideHorizontal: { style: BorderStyle.SINGLE, color: colors.line, size: 3 }, insideVertical: { style: BorderStyle.SINGLE, color: colors.line, size: 3 } },
 });
 
@@ -85,7 +86,7 @@ async function makeReport() {
     new Paragraph({ spacing: { before: 620, after: 180 }, alignment: AlignmentType.CENTER, children: [text("软件系统设计与体系结构综合实训", { bold: true, size: 34, color: colors.green })] }),
     new Paragraph({ spacing: { after: 750 }, alignment: AlignmentType.CENTER, children: [text("综合实训设计报告", { bold: true, size: 50, color: colors.ink })] }),
     new Paragraph({ spacing: { after: 520 }, alignment: AlignmentType.CENTER, children: [text("个人财务管理与可视化看板", { bold: true, size: 38, color: colors.blue })] }),
-    table(["项目", "请填写"], [["学院", "计算机与信息工程学院"], ["姓名", "【请填写姓名】"], ["学号", "【请填写学号】"], ["班级", "【请填写班级】"], ["指导教师", "【请填写指导教师】"], ["完成日期", "2026 年 9 月"]], [2800, 5600]),
+    table(["项目", "信息"], [["学院", "计算机与信息工程学院"], ["小组成员", "蓝思钰 52302042011；姜萱萱 52302042008；刘晓盼 52302042019；王晨 52302042035；朱婷婷 52302042055"], ["班级", "【请填写班级】"], ["指导教师", "【请填写指导教师】"], ["完成日期", "2026 年 9 月"]], [2800, 5600]),
     new Paragraph({ children: [new PageBreak()] }),
     h("摘  要", HeadingLevel.HEADING_1),
     p("本项目设计并实现了一套本地优先的个人财务管理与可视化看板“一目”。系统面向拥有多个支付账户、希望建立预算与储蓄习惯的个人用户，围绕账户、交易、预算、目标和报表形成完整业务闭环。用户可以录入收入、支出和账户间转账，系统根据可追溯交易实时推导账户余额、净资产、月度现金流和预算使用状态；同时支持 CSV 账单导入、重复识别、批次撤销、目标进度管理、原始数据导出和彻底删除。"),
@@ -173,7 +174,7 @@ async function makeReport() {
     p("本项目完成了从需求分析、产品设计、体系结构设计、详细设计到编码、测试和部署的完整实训链路。系统不以静态原型结束，而是交付可直接运行的 Java 程序和配套源代码；核心业务闭环、报表分析、数据治理及安全边界均有实现与测试证据。MVC 使关注点清晰分离，观察者模式保证不同视图对同一状态变更保持一致，整数分和纯函数计算提高了财务数据的正确性与可测试性。"),
     p("后续可以在保持领域接口稳定的基础上增加登录与服务端数据库、可视化字段映射、分类维护、年度预算和多端同步。本次实训说明了体系结构并非形式化图示，而是直接影响代码可读性、变化成本、测试难度和部署可靠性的工程决策。"),
     h("10 小组分工", HeadingLevel.HEADING_1, true),
-    table(["成员", "学号", "主要工作", "贡献比例"], [["【请填写】", "【请填写】", "需求分析、体系结构设计、前端实现、测试与文档", "100%（个人项目）"], ["【如为小组请新增】", "【请填写】", "【请填写实际分工】", "【请填写】"]], [1800, 1800, 3900, 1200]),
+    table(["成员", "学号", "主要工作", "贡献比例"], [["蓝思钰", "52302042011", "需求分析、产品方案与总体设计", "20%"], ["姜萱萱", "52302042008", "界面设计、响应式布局与交互实现", "20%"], ["刘晓盼", "52302042019", "领域模型、业务规则与报表计算", "20%"], ["王晨", "52302042035", "数据导入、安全控制与自动化测试", "20%"], ["朱婷婷", "52302042055", "部署打包、实训报告与答辩材料", "20%"]], [1800, 1800, 3900, 1200]),
     h("参考文献", HeadingLevel.HEADING_1, true),
     p("[1] 软件系统设计与体系结构综合实训指导书，蚌埠学院计算机与信息工程学院。"),
     p("[2] Gamma E, Helm R, Johnson R, Vlissides J. Design Patterns: Elements of Reusable Object-Oriented Software. Addison-Wesley, 1994."),
@@ -236,7 +237,7 @@ async function makePresentation() {
   slide.addShape("roundRect", { x: 8.6, y: 1.2, w: 3.65, h: 4.75, fill: { color: colors.white, transparency: 5 }, line: { color: "33536F" }, radius: 0.08 });
   slide.addText("一目", { x: 9.1, y: 2.1, w: 2.65, h: 0.8, fontSize: 36, bold: true, color: colors.green, align: "center", margin: 0 });
   slide.addText("账户 · 交易 · 预算\n目标 · 报表 · 数据治理", { x: 9.05, y: 3.25, w: 2.75, h: 1.0, fontSize: 14, color: colors.ink, align: "center", breakLine: false, margin: 0, fit: "shrink" });
-  slide.addText("姓名：【请填写】   学号：【请填写】\n班级：【请填写】   指导教师：【请填写】", { x: 0.88, y: 5.75, w: 6.8, h: 0.75, fontSize: 12, color: "B9CAD5", breakLine: false, margin: 0 });
+  slide.addText("小组成员\n蓝思钰 52302042011 · 姜萱萱 52302042008 · 刘晓盼 52302042019\n王晨 52302042035 · 朱婷婷 52302042055\n班级：【请填写】   指导教师：【请填写】", { x: 0.88, y: 5.18, w: 7.15, h: 1.22, fontSize: 10.5, color: "B9CAD5", breakLine: false, margin: 0, fit: "shrink" });
   addNotes(slide, "开场说明：本项目不是静态原型，而是一套可运行、可测试、可打包的课程提交版。先介绍为什么做，再展示体系结构和现场演示路径。");
 
   slide = pptx.addSlide(); addTitle(slide, "01  从流水记录到财务决策", 2);
@@ -327,7 +328,7 @@ async function makePresentation() {
   slide.addText("Q & A", { x: 9.55, y: 2.4, w: 2.35, h: 0.7, fontSize: 34, bold: true, color: colors.green, align: "center", margin: 0 });
   slide.addText("谢谢老师", { x: 9.55, y: 3.55, w: 2.35, h: 0.4, fontSize: 15, color: colors.ink, align: "center", margin: 0 });
   slide.addText("演示地址\n127.0.0.1:4173", { x: 9.55, y: 4.25, w: 2.35, h: 0.55, fontSize: 10, color: colors.soft, align: "center", margin: 0 });
-  slide.addText("【请填写姓名】 · 2026", { x: 0.93, y: 6.42, w: 4, h: 0.25, fontSize: 10, color: "8EA4B5", margin: 0 });
+  slide.addText("蓝思钰 · 姜萱萱 · 刘晓盼 · 王晨 · 朱婷婷 · 2026", { x: 0.93, y: 6.42, w: 5.8, h: 0.25, fontSize: 9, color: "8EA4B5", margin: 0 });
   addNotes(slide, "结束后进入现场演示。建议顺序：概览 → 新增交易 → 预算 → 报表 → 数据导出。然后回答问题。");
 
   await pptx.writeFile({ fileName: path.join(outDir, "个人财务管理与可视化看板-答辩演示.pptx") });
