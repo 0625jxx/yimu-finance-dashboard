@@ -11,9 +11,9 @@ test("应用入口显式连接 Model、View 和 Controller", async () => {
   assert.match(source, /AppController/);
 });
 
-test("主页面包含看板、交易、账户和预算四个核心视图", async () => {
+test("主页面包含看板、交易、账户、预算和目标五个核心视图", async () => {
   const html = await read("../index.html");
-  for (const page of ["dashboard", "transactions", "accounts", "budgets"]) {
+  for (const page of ["dashboard", "transactions", "accounts", "budgets", "goals"]) {
     assert.match(html, new RegExp(`data-page=["']${page}["']`));
   }
 });
@@ -23,6 +23,7 @@ test("高影响和录入操作使用可访问的原生对话框与明确标签",
   assert.match(html, /<dialog[^>]+id="transaction-dialog"/);
   assert.match(html, /<dialog[^>]+id="account-dialog"/);
   assert.match(html, /<dialog[^>]+id="budget-dialog"/);
+  assert.match(html, /<dialog[^>]+id="goal-dialog"/);
   assert.match(html, /aria-label="隐藏全部金额"/);
 });
 

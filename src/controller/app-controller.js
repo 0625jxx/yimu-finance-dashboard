@@ -36,6 +36,7 @@ export class AppController {
     this.document.querySelector("#transaction-form").addEventListener("submit", (event) => this.addTransaction(event));
     this.document.querySelector("#account-form").addEventListener("submit", (event) => this.addAccount(event));
     this.document.querySelector("#budget-form").addEventListener("submit", (event) => this.setBudget(event));
+    this.document.querySelector("#goal-form").addEventListener("submit", (event) => this.saveGoal(event));
     this.document.querySelector("#csv-input").addEventListener("change", (event) => this.importCsv(event));
     this.document.querySelector("#transaction-form").addEventListener("change", (event) => {
       if (event.target.name === "type") this.updateTransactionFields(event.target.value);
@@ -66,8 +67,13 @@ export class AppController {
     if (!actionButton) return;
     const actions = {
       "new-transaction": () => this.openTransactionDialog(),
+      "edit-transaction": () => this.openTransactionDialog(this.store.getState().transactions.find(({ id }) => id === actionButton.dataset.id)),
       "new-account": () => this.view.openDialog("account-dialog"),
       "new-budget": () => this.view.openDialog("budget-dialog"),
+      "new-goal": () => this.openGoalDialog(),
+      "edit-goal": () => this.openGoalDialog(this.store.getState().goals.find(({ id }) => id === actionButton.dataset.id)),
+      "delete-goal": () => this.deleteGoal(actionButton.dataset.id),
+      "undo-import": () => this.undoImport(actionButton.dataset.id),
       "toggle-privacy": () => { this.ui.hideAmounts = !this.ui.hideAmounts; this.render(); },
       "import-csv": () => this.document.querySelector("#csv-input").click(),
       "export-data": () => this.exportData(),
@@ -76,11 +82,22 @@ export class AppController {
     actions[actionButton.dataset.action]?.();
   }
 
-  openTransactionDialog() {
+  openTransactionDialog(transaction = null) {
     const form = this.document.querySelector("#transaction-form");
     form.reset();
-    form.elements.date.value = `${this.ui.month}-${String(Math.min(new Date().getDate(), 28)).padStart(2, "0")}`;
-    this.updateTransactionFields("expense");
+    form.elements.transactionId.value = transaction?.id ?? "";
+    form.elements.amount.value = transaction ? (transaction.amountCents / 100).toFixed(2) : "";
+    form.elements.date.value = transaction?.date ?? `${this.ui.month}-${String(Math.min(new Date().getDate(), 28)).padStart(2, "0")}`;
+    form.elements.accountId.value = transaction?.accountId ?? form.elements.accountId.value;
+    form.elements.targetAccountId.value = transaction?.targetAccountId ?? form.elements.targetAccountId.value;
+    form.elements.category.value = transaction?.category ?? "餐饮";
+    form.elements.merchant.value = transaction?.merchant ?? "";
+    form.elements.note.value = transaction?.note ?? "";
+    form.elements.namedItem("type").value = transaction?.type ?? "expense";
+    this.document.querySelector("#transaction-dialog-kicker").textContent = transaction ? "修正已有记录" : "新增记录";
+    this.document.querySelector("#transaction-dialog-title").textContent = transaction ? "编辑交易" : "记一笔";
+    this.document.querySelector("#transaction-submit").textContent = transaction ? "保存修改" : "保存记录";
+    this.updateTransactionFields(transaction?.type ?? "expense");
     this.view.openDialog("transaction-dialog");
     setTimeout(() => form.elements.amount.focus(), 0);
   }
@@ -115,9 +132,11 @@ export class AppController {
       }
     }
     try {
-      this.store.addTransaction(transaction);
+      const id = data.get("transactionId");
+      if (id) this.store.updateTransaction(id, transaction);
+      else this.store.addTransaction(transaction);
       this.view.closeDialog(form.closest("dialog"));
-      this.view.showToast("记录已保存");
+      this.view.showToast(id ? "修改已保存" : "记录已保存");
     } catch (error) {
       this.view.showToast(error.message);
     }
@@ -149,6 +168,57 @@ export class AppController {
     this.view.showToast("预算已更新");
   }
 
+  openGoalDialog(goal = null) {
+    const form = this.document.querySelector("#goal-form");
+    form.reset();
+    form.elements.goalId.value = goal?.id ?? "";
+    form.elements.name.value = goal?.name ?? "";
+    form.elements.type.value = goal?.type ?? "saving";
+    form.elements.targetAmount.value = goal ? (goal.targetCents / 100).toFixed(2) : "";
+    form.elements.currentAmount.value = goal ? (goal.currentCents / 100).toFixed(2) : "0";
+    form.elements.targetDate.value = goal?.targetDate ?? "";
+    this.document.querySelector("#goal-dialog-kicker").textContent = goal ? "更新目标进度" : "想实现什么";
+    this.document.querySelector("#goal-dialog-title").textContent = goal ? "编辑财务目标" : "添加财务目标";
+    this.document.querySelector("#goal-submit").textContent = goal ? "保存修改" : "保存目标";
+    this.view.openDialog("goal-dialog");
+  }
+
+  saveGoal(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    try {
+      this.store.saveGoal({
+        id: data.get("goalId") || undefined,
+        name: data.get("name").trim(),
+        type: data.get("type"),
+        targetCents: Math.round(Number(data.get("targetAmount")) * 100),
+        currentCents: Math.round(Number(data.get("currentAmount")) * 100),
+        targetDate: data.get("targetDate"),
+      });
+      this.view.closeDialog(form.closest("dialog"));
+      this.view.showToast(data.get("goalId") ? "目标已更新" : "目标已添加");
+    } catch (error) {
+      this.view.showToast(error.message);
+    }
+  }
+
+  deleteGoal(id) {
+    if (!globalThis.confirm("删除后将无法继续跟踪这个目标。确认删除吗？")) return;
+    this.store.removeGoal(id);
+    this.view.showToast("目标已删除");
+  }
+
+  undoImport(id) {
+    if (!globalThis.confirm("撤销后，这个批次导入的全部交易都会删除，账户余额和报表将同步重算。是否继续？")) return;
+    try {
+      this.store.undoImportBatch(id);
+      this.view.showToast("导入批次已撤销");
+    } catch (error) {
+      this.view.showToast(error.message);
+    }
+  }
+
   deleteTransaction(id) {
     if (!globalThis.confirm("删除后账户余额和报表会同步重算。确认删除这笔交易吗？")) return;
     this.store.removeTransaction(id);
@@ -166,7 +236,7 @@ export class AppController {
       const duplicates = new Set(findDuplicateTransactions(state.transactions, prepared));
       const unique = prepared.filter(({ id }) => !duplicates.has(id));
       if (duplicates.size && !globalThis.confirm(`发现 ${duplicates.size} 笔疑似重复交易。将跳过重复项并导入其余 ${unique.length} 笔，是否继续？`)) return;
-      if (unique.length) this.store.addTransactions(unique);
+      if (unique.length) this.store.importTransactions(unique, { fileName: file.name });
       this.view.showToast(`已导入 ${unique.length} 笔，跳过 ${duplicates.size} 笔重复项`);
     } catch (error) {
       this.view.showToast(`导入失败：${error.message}`);

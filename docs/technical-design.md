@@ -2,14 +2,14 @@
 
 | 项目 | 内容 |
 | --- | --- |
-| 版本 | v0.1 |
+| 版本 | v0.2 |
 | 更新日期 | 2026-09-14 |
 | 技术形态 | 原生 JavaScript 响应式 Web 应用 |
 | 数据模式 | 浏览器本地优先 |
 
 ## 1. 实现目标
 
-第一版聚焦“账户—交易—预算—看板”闭环：用户记录一笔交易后，账户余额、净资产、现金流、图表和预算进度在同一次状态变更中刷新。实现不依赖第三方运行时库，便于在实训环境中直接启动、阅读和演示。
+当前版本聚焦“账户—交易—预算—目标—看板”闭环：用户新增或编辑一笔交易后，账户余额、净资产、现金流、图表和预算进度在同一次状态变更中刷新。实现不依赖第三方运行时库，便于在实训环境中直接启动、阅读和演示。
 
 当前版本是可运行的课程实训 MVP，不包含登录、云端同步、多人协作和服务端数据库。若进入真实生产环境，需要补充后端身份认证、数据库事务、加密和备份策略。
 
@@ -52,9 +52,13 @@ classDiagram
       -observers
       +subscribe(observer)
       +addTransaction(transaction)
+      +updateTransaction(id, transaction)
       +removeTransaction(id)
       +addAccount(account)
       +setBudget(budget)
+      +saveGoal(goal)
+      +importTransactions(transactions, batch)
+      +undoImportBatch(id)
     }
     class AppController {
       +start()
@@ -88,9 +92,10 @@ Account     { id, name, type, kind, openingBalanceCents }
 Transaction { id, type, amountCents, date, accountId, targetAccountId?, category, merchant?, note?, source }
 Budget      { month, category, limitCents }
 Goal        { id, name, currentCents, targetCents, targetDate }
+ImportBatch { id, fileName, createdAt, transactionCount, status }
 ```
 
-交易是余额和报表的可追溯来源。账户只保存期初余额，当前余额由期初余额与全部相关交易推导。
+交易是余额和报表的可追溯来源。账户只保存期初余额，当前余额由期初余额与全部相关交易推导。导入交易保留批次标识，撤销批次时按标识移除全部关联交易，并保留已撤销状态用于追溯。
 
 ## 6. CSV 导入格式
 
@@ -107,7 +112,7 @@ Goal        { id, name, currentCents, targetCents, targetDate }
 
 - 领域单元测试：账户余额、净资产、现金流、预算边界、CSV 和观察者通知。
 - 结构测试：MVC 组装、核心页面、原生对话框、隐私入口、移动端与键盘支持。
-- 浏览器冒烟测试：新增交易、关键词搜索、类型筛选、新增预算、桌面和移动截图以及控制台错误。
+- 浏览器冒烟测试：新增与编辑交易、关键词搜索、类型筛选、导入批次撤销、新增预算、目标管理、桌面和移动截图以及控制台错误。
 
 运行 `npm run validate` 执行 Node 测试与 Markdown 链接检查。浏览器回归脚本位于 `tests/browser-smoke.py`。
 
@@ -127,6 +132,6 @@ Goal        { id, name, currentCents, targetCents, targetDate }
 
 1. 将 Store 持久化适配器替换为后端 REST API 和关系数据库，并保持 View/Controller 接口不变。
 2. 增加用户身份认证、密码哈希、服务端授权和安全审计。
-3. 完成 CSV 字段映射、导入批次记录与整批撤销。
-4. 增加交易编辑、分类和标签维护、目标进度更新。
+3. 完成 CSV 可视化字段映射和逐条冲突处理。
+4. 增加分类与标签维护、目标账户自动关联。
 5. 对高数据量列表加入分页或虚拟滚动，并增加端到端性能基线。

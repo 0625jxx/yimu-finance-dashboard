@@ -151,11 +151,31 @@ export const findDuplicateTransactions = (existing, incoming) => {
 };
 
 export const createFinanceStore = (initialState, persist = () => {}) => {
-  let state = clone(initialState);
+  const sourceState = clone(initialState);
+  let state = {
+    ...sourceState,
+    accounts: sourceState.accounts ?? [],
+    transactions: sourceState.transactions ?? [],
+    budgets: sourceState.budgets ?? [],
+    goals: sourceState.goals ?? [],
+    importBatches: sourceState.importBatches ?? [],
+  };
   const observers = new Set();
   const publish = (event) => {
     persist(clone(state));
     observers.forEach((observer) => observer(clone(state), event));
+  };
+  const validateTransaction = (transaction) => {
+    if (!Number.isInteger(transaction.amountCents) || transaction.amountCents <= 0) {
+      throw new Error("金额必须大于 0");
+    }
+    if (!state.accounts.some(({ id }) => id === transaction.accountId)) {
+      throw new Error("账户不存在");
+    }
+    if (transaction.type === "transfer") {
+      if (!state.accounts.some(({ id }) => id === transaction.targetAccountId)) throw new Error("转入账户不存在");
+      if (transaction.accountId === transaction.targetAccountId) throw new Error("转出和转入账户不能相同");
+    }
   };
 
   return {
@@ -165,9 +185,7 @@ export const createFinanceStore = (initialState, persist = () => {}) => {
       return () => observers.delete(observer);
     },
     addTransaction(transaction) {
-      if (!Number.isInteger(transaction.amountCents) || transaction.amountCents <= 0) {
-        throw new Error("金额必须大于 0");
-      }
+      validateTransaction(transaction);
       state.transactions.unshift({
         id: transaction.id ?? createId("transaction"),
         source: transaction.source ?? "manual",
@@ -175,14 +193,44 @@ export const createFinanceStore = (initialState, persist = () => {}) => {
       });
       publish("transaction:added");
     },
+    updateTransaction(id, transaction) {
+      const index = state.transactions.findIndex((item) => item.id === id);
+      if (index < 0) throw new Error("交易不存在");
+      const updated = { ...state.transactions[index], ...clone(transaction), id };
+      validateTransaction(updated);
+      state.transactions[index] = updated;
+      publish("transaction:updated");
+    },
     addTransactions(transactions) {
-      transactions.forEach((transaction) => {
-        if (!Number.isInteger(transaction.amountCents) || transaction.amountCents <= 0) {
-          throw new Error("金额必须大于 0");
-        }
-      });
+      transactions.forEach(validateTransaction);
       state.transactions.unshift(...clone(transactions));
       publish("transactions:imported");
+    },
+    importTransactions(transactions, batch) {
+      transactions.forEach(validateTransaction);
+      const batchId = batch.id ?? createId("batch");
+      const imported = clone(transactions).map((transaction) => ({
+        ...transaction,
+        source: "import",
+        importBatchId: batchId,
+      }));
+      state.transactions.unshift(...imported);
+      state.importBatches.unshift({
+        id: batchId,
+        fileName: batch.fileName,
+        createdAt: batch.createdAt ?? new Date().toISOString(),
+        transactionCount: imported.length,
+        status: "active",
+      });
+      publish("import:completed");
+    },
+    undoImportBatch(id) {
+      const batch = state.importBatches.find((item) => item.id === id);
+      if (!batch || batch.status !== "active") throw new Error("导入批次不可撤销");
+      state.transactions = state.transactions.filter(({ importBatchId }) => importBatchId !== id);
+      batch.status = "undone";
+      batch.undoneAt = new Date().toISOString();
+      publish("import:undone");
     },
     removeTransaction(id) {
       state.transactions = state.transactions.filter((transaction) => transaction.id !== id);
@@ -198,8 +246,29 @@ export const createFinanceStore = (initialState, persist = () => {}) => {
       else state.budgets.push(clone(budget));
       publish("budget:changed");
     },
+    saveGoal(goal) {
+      if (!Number.isInteger(goal.targetCents) || goal.targetCents <= 0) throw new Error("目标金额必须大于 0");
+      if (!Number.isInteger(goal.currentCents) || goal.currentCents < 0) throw new Error("当前金额不能小于 0");
+      const saved = { ...clone(goal), id: goal.id ?? createId("goal") };
+      const index = state.goals.findIndex(({ id }) => id === saved.id);
+      if (index >= 0) state.goals[index] = saved;
+      else state.goals.push(saved);
+      publish(index >= 0 ? "goal:updated" : "goal:added");
+    },
+    removeGoal(id) {
+      state.goals = state.goals.filter((goal) => goal.id !== id);
+      publish("goal:removed");
+    },
     replaceState(nextState) {
-      state = clone(nextState);
+      const replacement = clone(nextState);
+      state = {
+        ...replacement,
+        accounts: replacement.accounts ?? [],
+        transactions: replacement.transactions ?? [],
+        budgets: replacement.budgets ?? [],
+        goals: replacement.goals ?? [],
+        importBatches: replacement.importBatches ?? [],
+      };
       publish("state:replaced");
     },
   };

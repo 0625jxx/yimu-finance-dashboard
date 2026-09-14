@@ -8,7 +8,7 @@ const escapeHtml = (value = "") => String(value).replace(/[&<>'"]/g, (character)
 const money = (cents) => currency.format(cents / 100);
 const typeLabels = { expense: "支出", income: "收入", transfer: "转账", adjustment: "调整" };
 const categoryIcons = { 餐饮: "餐", 交通: "行", 居住: "住", 购物: "购", 娱乐: "乐", 医疗: "医", 工资: "薪", 其他: "·", 转账: "转" };
-const pageTitles = { dashboard: "财务概览", transactions: "交易明细", accounts: "账户", budgets: "月度预算" };
+const pageTitles = { dashboard: "财务概览", transactions: "交易明细", accounts: "账户", budgets: "月度预算", goals: "财务目标" };
 
 const createChart = (transactions, month) => {
   const days = Array.from({ length: 30 }, (_, index) => index + 1);
@@ -43,6 +43,8 @@ export class DashboardView {
     this.transactions = documentRef.querySelector("#transaction-list");
     this.accounts = documentRef.querySelector("#account-list");
     this.budgets = documentRef.querySelector("#budget-list");
+    this.goals = documentRef.querySelector("#goal-list");
+    this.importBatches = documentRef.querySelector("#import-batches");
     this.toastTimer = null;
     documentRef.querySelector("#today-label").textContent = dateFormat.format(new Date());
   }
@@ -65,6 +67,8 @@ export class DashboardView {
     this.renderTransactions(state, ui);
     this.renderAccounts(state);
     this.renderBudgets(state, ui.month);
+    this.renderGoals(state);
+    this.renderImportBatches(state);
     this.syncAccountSelects(state.accounts);
   }
 
@@ -106,7 +110,7 @@ export class DashboardView {
         </div>
         <aside class="dashboard-side">
           <article class="panel budget-panel"><div class="panel-title-row"><div><h3>预算节奏</h3><p>${budgets.length} 个分类预算</p></div><button class="link-button" type="button" data-route="budgets">管理</button></div><div class="budget-stack">${budgetRows || '<div class="empty-state"><strong>还没有预算</strong>设置预算后可跟踪本月节奏。</div>'}</div></article>
-          <article class="panel goal-panel"><div class="panel-title-row"><div><h3>优先目标</h3><p>${goal ? `计划于 ${escapeHtml(goal.targetDate)} 完成` : "尚未设置目标"}</p></div></div>${goal ? `<div class="goal-ring" style="--goal-progress:${goalRatio * 100}%"><div><strong>${Math.round(goalRatio * 100)}%</strong><span>已完成</span></div></div><div class="goal-caption"><strong>${escapeHtml(goal.name)}</strong><span data-money>${money(goal.currentCents)} / ${money(goal.targetCents)}</span></div>` : ""}</article>
+          <article class="panel goal-panel"><div class="panel-title-row"><div><h3>优先目标</h3><p>${goal ? `计划于 ${escapeHtml(goal.targetDate)} 完成` : "尚未设置目标"}</p></div><button class="link-button" type="button" data-route="goals">管理</button></div>${goal ? `<div class="goal-ring" style="--goal-progress:${goalRatio * 100}%"><div><strong>${Math.round(goalRatio * 100)}%</strong><span>已完成</span></div></div><div class="goal-caption"><strong>${escapeHtml(goal.name)}</strong><span data-money>${money(goal.currentCents)} / ${money(goal.targetCents)}</span></div>` : ""}</article>
           <article class="panel account-summary"><div class="panel-title-row"><div><h3>账户余额</h3><p>${state.accounts.length} 个账户</p></div><button class="link-button" type="button" data-route="accounts">查看</button></div><div class="account-mini-list">${accountRows}</div></article>
         </aside>
       </div>`;
@@ -117,7 +121,7 @@ export class DashboardView {
       const account = accountById.get(transaction.accountId);
       const isIncome = transaction.type === "income";
       const sign = isIncome ? "+" : transaction.type === "expense" ? "−" : "";
-      return `<div class="transaction-row"><span class="category-icon" aria-hidden="true">${categoryIcons[transaction.category] ?? "·"}</span><div class="transaction-meta"><strong>${escapeHtml(transaction.merchant || transaction.category)}</strong><span>${escapeHtml(transaction.category)} · ${escapeHtml(transaction.date)}</span></div><span class="transaction-account">${escapeHtml(account?.name ?? "未知账户")} · ${typeLabels[transaction.type]}</span><strong class="transaction-amount ${isIncome ? "income" : ""}" data-money>${sign}${money(transaction.amountCents)}</strong>${allowDelete ? `<button class="row-delete" type="button" data-action="delete-transaction" data-id="${escapeHtml(transaction.id)}" aria-label="删除这笔交易">×</button>` : ""}</div>`;
+      return `<div class="transaction-row"><span class="category-icon" aria-hidden="true">${categoryIcons[transaction.category] ?? "·"}</span><div class="transaction-meta"><strong>${escapeHtml(transaction.merchant || transaction.category)}</strong><span>${escapeHtml(transaction.category)} · ${escapeHtml(transaction.date)}</span></div><span class="transaction-account">${escapeHtml(account?.name ?? "未知账户")} · ${typeLabels[transaction.type]}</span><strong class="transaction-amount ${isIncome ? "income" : ""}" data-money>${sign}${money(transaction.amountCents)}</strong>${allowDelete ? `<span class="row-actions"><button class="row-action" type="button" data-action="edit-transaction" data-id="${escapeHtml(transaction.id)}" aria-label="编辑这笔交易">编</button><button class="row-action danger" type="button" data-action="delete-transaction" data-id="${escapeHtml(transaction.id)}" aria-label="删除这笔交易">×</button></span>` : ""}</div>`;
     }).join("");
   }
 
@@ -147,6 +151,20 @@ export class DashboardView {
       return `<article class="panel budget-page-card"><div class="budget-label"><h3>${escapeHtml(budget.category)}</h3><span>${statusLabel}</span></div><div class="progress-track"><div class="progress-fill ${progress.status}" style="width:${Math.min(progress.ratio * 100, 100)}%"></div></div><div class="budget-numbers"><span>已使用<strong data-money>${money(spent)}</strong></span><span>剩余<strong data-money>${money(progress.remainingCents)}</strong></span><span>预算<strong data-money>${money(budget.limitCents)}</strong></span></div></article>`;
     }).join("");
     this.budgets.innerHTML = rows || '<div class="panel empty-state"><strong>这个月还没有预算</strong>先为最容易超支的分类设置额度。</div>';
+  }
+
+  renderGoals(state) {
+    this.goals.innerHTML = state.goals.map((goal) => {
+      const ratio = Math.min(goal.currentCents / goal.targetCents, 1);
+      const remaining = Math.max(goal.targetCents - goal.currentCents, 0);
+      const status = goal.currentCents >= goal.targetCents ? "已完成" : "进行中";
+      return `<article class="panel goal-card"><div class="goal-card-head"><div><span class="goal-type">${goal.type === "debt" ? "还债" : "储蓄"}</span><h3>${escapeHtml(goal.name)}</h3></div><span class="goal-status">${status}</span></div><div class="goal-progress-number"><strong>${Math.round(ratio * 100)}%</strong><span data-money>${money(goal.currentCents)} / ${money(goal.targetCents)}</span></div><div class="progress-track"><div class="progress-fill" style="width:${ratio * 100}%"></div></div><footer><span>还差 <b data-money>${money(remaining)}</b></span><span>目标日 ${escapeHtml(goal.targetDate || "未设置")}</span></footer><div class="card-actions"><button class="link-button" type="button" data-action="edit-goal" data-id="${escapeHtml(goal.id)}">更新进度</button><button class="link-button danger-text" type="button" data-action="delete-goal" data-id="${escapeHtml(goal.id)}">删除</button></div></article>`;
+    }).join("") || '<div class="panel empty-state"><strong>还没有财务目标</strong>添加一个储蓄或还债目标，把计划变成可见进度。</div>';
+  }
+
+  renderImportBatches(state) {
+    const recent = state.importBatches.slice(0, 3);
+    this.importBatches.innerHTML = recent.length ? `<div class="import-history"><div><strong>最近导入</strong><span>批次记录让批量变更可追溯</span></div><div class="import-batch-list">${recent.map((batch) => `<div class="import-batch"><span><b>${escapeHtml(batch.fileName || "CSV 账单")}</b><small>${batch.transactionCount} 笔 · ${batch.status === "undone" ? "已撤销" : "已导入"}</small></span>${batch.status === "active" ? `<button class="link-button danger-text" type="button" data-action="undo-import" data-id="${escapeHtml(batch.id)}">撤销批次</button>` : '<em>已撤销</em>'}</div>`).join("")}</div></div>` : "";
   }
 
   syncAccountSelects(accounts) {

@@ -90,3 +90,64 @@ test("数据仓库在新增交易后通知观察者且拒绝零金额", () => {
     /金额必须大于 0/,
   );
 });
+
+test("数据仓库拒绝写入不存在的账户", () => {
+  const store = createFinanceStore({ accounts, transactions: [], budgets: [] });
+  assert.throws(
+    () => store.addTransaction({ type: "expense", amountCents: 100, accountId: "missing", date: "2026-09-11", category: "餐饮" }),
+    /账户不存在/,
+  );
+});
+
+test("编辑交易保留标识并发布更新事件", () => {
+  const store = createFinanceStore({ accounts, transactions: [transactions[1]], budgets: [] });
+  const events = [];
+  store.subscribe((state, event) => events.push([state.transactions[0].amountCents, event]));
+
+  store.updateTransaction("food", { ...transactions[1], amountCents: 9_900, note: "聚餐" });
+
+  assert.equal(store.getState().transactions[0].id, "food");
+  assert.deepEqual(events, [[9_900, "transaction:updated"]]);
+});
+
+test("编辑不存在的交易时拒绝静默创建", () => {
+  const store = createFinanceStore({ accounts, transactions: [], budgets: [] });
+  assert.throws(() => store.updateTransaction("missing", { amountCents: 100 }), /交易不存在/);
+});
+
+test("导入批次记录来源并可整批撤销", () => {
+  const store = createFinanceStore({ accounts, transactions: [], budgets: [], importBatches: [] });
+  store.importTransactions(
+    [
+      { id: "import-1", type: "expense", amountCents: 2_000, accountId: "cash", date: "2026-09-08", category: "餐饮" },
+      { id: "import-2", type: "expense", amountCents: 3_000, accountId: "cash", date: "2026-09-09", category: "交通" },
+    ],
+    { id: "batch-1", fileName: "九月账单.csv", createdAt: "2026-09-14T10:00:00.000Z" },
+  );
+
+  assert.equal(store.getState().transactions[0].importBatchId, "batch-1");
+  assert.equal(store.getState().importBatches[0].transactionCount, 2);
+
+  store.undoImportBatch("batch-1");
+  assert.equal(store.getState().transactions.length, 0);
+  assert.equal(store.getState().importBatches[0].status, "undone");
+});
+
+test("目标可新增和更新，目标金额必须大于零", () => {
+  const store = createFinanceStore({ accounts, transactions: [], budgets: [], goals: [] });
+  store.saveGoal({ id: "goal-1", name: "旅行基金", currentCents: 10_000, targetCents: 50_000, targetDate: "2026-12-31" });
+  store.saveGoal({ id: "goal-1", name: "旅行基金", currentCents: 20_000, targetCents: 50_000, targetDate: "2026-12-31" });
+
+  assert.equal(store.getState().goals.length, 1);
+  assert.equal(store.getState().goals[0].currentCents, 20_000);
+  assert.throws(() => store.saveGoal({ name: "无效目标", currentCents: 0, targetCents: 0 }), /目标金额必须大于 0/);
+});
+
+test("删除目标只影响指定目标", () => {
+  const store = createFinanceStore({ accounts, transactions: [], budgets: [], goals: [
+    { id: "goal-1", name: "旅行", currentCents: 0, targetCents: 10_000 },
+    { id: "goal-2", name: "应急金", currentCents: 0, targetCents: 20_000 },
+  ] });
+  store.removeGoal("goal-1");
+  assert.deepEqual(store.getState().goals.map(({ id }) => id), ["goal-2"]);
+});

@@ -27,6 +27,9 @@
           <button class="nav-item" type="button" data-route="budgets">
             <span aria-hidden="true">◔</span><b>预算</b>
           </button>
+          <button class="nav-item" type="button" data-route="goals">
+            <span aria-hidden="true">◇</span><b>目标</b>
+          </button>
         </nav>
         <div class="sidebar-foot">
           <button class="quiet-action" type="button" data-action="export-data">导出数据</button>
@@ -70,6 +73,7 @@
               <button class="filter-chip" type="button" data-filter="income">收入</button>
               <button class="filter-chip" type="button" data-filter="transfer">转账</button>
             </div>
+            <div id="import-batches"></div>
             <div id="transaction-list"></div>
           </section>
 
@@ -88,13 +92,22 @@
             </div>
             <div id="budget-list" class="budget-page-list"></div>
           </section>
+
+          <section class="page" data-page="goals" aria-labelledby="goals-title" hidden>
+            <div class="section-heading">
+              <div><p class="section-kicker">一步一步接近</p><h2 id="goals-title">正在追踪</h2></div>
+              <button class="secondary-button" type="button" data-action="new-goal">添加目标</button>
+            </div>
+            <div id="goal-list" class="goal-page-list"></div>
+          </section>
         </main>
       </div>
     </div>
 
     <dialog id="transaction-dialog" aria-labelledby="transaction-dialog-title">
       <form id="transaction-form" method="dialog" class="dialog-form">
-        <div class="dialog-heading"><div><p>新增记录</p><h2 id="transaction-dialog-title">记一笔</h2></div><button type="button" class="close-button" data-close-dialog aria-label="关闭">×</button></div>
+        <input type="hidden" name="transactionId" />
+        <div class="dialog-heading"><div><p id="transaction-dialog-kicker">新增记录</p><h2 id="transaction-dialog-title">记一笔</h2></div><button type="button" class="close-button" data-close-dialog aria-label="关闭">×</button></div>
         <div class="segmented-control" role="group" aria-label="交易类型">
           <label><input type="radio" name="type" value="expense" checked /><span>支出</span></label>
           <label><input type="radio" name="type" value="income" /><span>收入</span></label>
@@ -109,7 +122,7 @@
           <label><span>商户 / 对方</span><input name="merchant" type="text" maxlength="40" placeholder="选填" /></label>
           <label class="field-wide"><span>备注</span><input name="note" type="text" maxlength="80" placeholder="选填" /></label>
         </div>
-        <div class="dialog-actions"><button class="text-button" type="button" data-close-dialog>取消</button><button class="primary-button" type="submit">保存记录</button></div>
+        <div class="dialog-actions"><button class="text-button" type="button" data-close-dialog>取消</button><button class="primary-button" id="transaction-submit" type="submit">保存记录</button></div>
       </form>
     </dialog>
 
@@ -130,6 +143,19 @@
         <label><span>分类</span><select name="category"><option>餐饮</option><option>交通</option><option>居住</option><option>购物</option><option>娱乐</option><option>医疗</option></select></label>
         <label><span>预算金额</span><input name="amount" type="number" min="1" step="0.01" required placeholder="1000.00" /></label>
         <div class="dialog-actions"><button class="text-button" type="button" data-close-dialog>取消</button><button class="primary-button" type="submit">保存预算</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="goal-dialog" aria-labelledby="goal-dialog-title">
+      <form id="goal-form" method="dialog" class="dialog-form compact-form">
+        <input type="hidden" name="goalId" />
+        <div class="dialog-heading"><div><p id="goal-dialog-kicker">想实现什么</p><h2 id="goal-dialog-title">添加财务目标</h2></div><button type="button" class="close-button" data-close-dialog aria-label="关闭">×</button></div>
+        <label><span>目标名称</span><input name="name" required maxlength="30" placeholder="例如：年度旅行基金" /></label>
+        <label><span>目标类型</span><select name="type"><option value="saving">储蓄目标</option><option value="debt">还债目标</option></select></label>
+        <label><span>目标金额</span><input name="targetAmount" type="number" min="1" step="0.01" required placeholder="10000.00" /></label>
+        <label><span>当前金额</span><input name="currentAmount" type="number" min="0" step="0.01" required value="0" /></label>
+        <label><span>目标日期</span><input name="targetDate" type="date" required /></label>
+        <div class="dialog-actions"><button class="text-button" type="button" data-close-dialog>取消</button><button class="primary-button" id="goal-submit" type="submit">保存目标</button></div>
       </form>
     </dialog>
 
