@@ -2,20 +2,17 @@ import { createFinanceStore } from "./model/finance-model.js";
 import { DashboardView } from "./view/dashboard-view.js";
 import { AppController } from "./controller/app-controller.js";
 import { seedData } from "./data/seed-data.js";
+import { createPersistence } from "./data/persistence.js";
 
-const storageKey = "yimu-finance-state-v1";
-const loadState = () => {
-  try {
-    return JSON.parse(localStorage.getItem(storageKey)) ?? seedData;
-  } catch {
-    return seedData;
-  }
+const bootstrap = async () => {
+  const persistence = createPersistence({ fetcher: fetch, storage: localStorage, seedData });
+  const store = createFinanceStore(await persistence.load(), (state) => {
+    void persistence.save(state);
+  });
+  const view = new DashboardView(document);
+  const controller = new AppController(store, view);
+
+  controller.start();
 };
 
-const store = createFinanceStore(loadState(), (state) => {
-  localStorage.setItem(storageKey, JSON.stringify(state));
-});
-const view = new DashboardView(document);
-const controller = new AppController(store, view);
-
-controller.start();
+void bootstrap();

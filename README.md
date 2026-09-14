@@ -2,7 +2,7 @@
 
 一个面向个人和家庭日常使用的财务管理产品。它通过低负担记账、统一账户视图、预算控制和趋势分析，帮助用户持续回答三个问题：钱在哪里、钱花到了哪里、下一步应该如何调整。
 
-当前仓库包含可直接运行和提交的课程实训版本。数据默认保存在当前浏览器的 `localStorage` 中，不会上传到服务器。
+当前仓库包含可直接运行和提交的课程实训版本。通过可执行 JAR 启动时，数据经本机 REST API 持久化到 SQLite；通过 Node 开发服务器启动时，自动回退到浏览器 `localStorage`。两种模式都不向外部网络上传数据。
 
 ## 快速开始
 
@@ -47,14 +47,15 @@ npm start
 
 完整的产品定位、用户场景、功能设计、指标口径、数据模型和迭代计划见[产品设计文档](docs/product-design.md)。
 
-MVC 分层、观察者模式、关键计算规则和运行时边界见[技术设计文档](docs/technical-design.md)。
+MVC 分层、观察者模式、关键计算规则和运行时边界见[技术设计文档](docs/technical-design.md)，关系数据库 ER 图、表结构和 SQL 见[数据库设计文档](docs/database-design.md)。
 
 ## 文档验证
 
-运行全部自动化测试与文档检查：
+运行全部 Node 自动化测试、JUnit 集成测试与文档检查：
 
 ```powershell
 npm run validate
+mvn test
 ```
 
 真实浏览器冒烟测试需要 Python Playwright。保持 `npm start` 运行，并在另一个终端执行：
@@ -67,4 +68,10 @@ py -3 tests/browser-smoke.py
 
 ## 提交材料
 
-`deliverables/` 中提供可执行 JAR、综合实训设计报告、答辩 PPT 和提交说明。报告封面中的姓名、学号、班级和指导教师使用醒目的占位符，请提交前替换为本人信息。
+`deliverables/` 中提供可执行 JAR、SQLite 数据库、建表 SQL、综合实训设计报告、答辩 PPT、校验和与提交说明。
+
+使用真实班级和指导教师信息一键重建全部提交材料：
+
+```powershell
+pwsh -File scripts/build-submission.ps1 -ClassName "实际班级" -Instructor "指导教师姓名"
+```

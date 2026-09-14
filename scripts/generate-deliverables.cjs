@@ -13,6 +13,12 @@ const outDir = path.join(root, "deliverables");
 const assetDir = path.join(outDir, "assets");
 fs.mkdirSync(assetDir, { recursive: true });
 
+const className = process.env.YIMU_CLASS_NAME?.trim();
+const instructor = process.env.YIMU_INSTRUCTOR?.trim();
+if (!className || !instructor) {
+  throw new Error("生成提交材料前必须设置 YIMU_CLASS_NAME 和 YIMU_INSTRUCTOR");
+}
+
 const colors = { ink: "17324D", green: "167B68", greenSoft: "DDEFEA", orange: "E36A3D", mist: "EDF2F3", paper: "FCFDFC", blue: "4B729B", soft: "687D8F", white: "FFFFFF", line: "DCE5E8" };
 const fonts = { body: "Microsoft YaHei", heading: "Microsoft YaHei" };
 
@@ -25,22 +31,22 @@ async function makeDiagrams() {
     <rect class="box" x="570" y="145" rx="22" width="260" height="130"/><text class="label" x="635" y="202">Controller</text><text class="small" x="610" y="240">交互编排与校验</text>
     <rect class="accent" x="1070" y="145" rx="22" width="260" height="130"/><text class="label" x="1140" y="202">Model</text><text class="small" x="1100" y="240">领域规则与计算</text>
     <path class="arrow" d="M330 210 H555"/><path class="arrow" d="M830 210 H1055"/>
-    <rect class="box" x="1070" y="430" rx="22" width="260" height="120"/><text class="label" x="1113" y="480">localStorage</text><text class="small" x="1110" y="520">浏览器本地持久化</text>
+    <rect class="box" x="1070" y="430" rx="22" width="260" height="120"/><text class="label" x="1160" y="480">SQLite</text><text class="small" x="1096" y="520">REST API 关系型持久化</text>
     <path class="arrow" d="M1200 275 V415"/>
-    <rect class="box" x="70" y="430" rx="22" width="760" height="120"/><text class="label" x="105" y="482">Java 17 本地静态服务器</text><text class="small" x="105" y="522">仅监听 127.0.0.1 · CSP · 路径约束 · GET/HEAD</text>
+    <rect class="box" x="70" y="430" rx="22" width="760" height="120"/><text class="label" x="105" y="482">Java 17 本地应用服务器</text><text class="small" x="105" y="522">静态资源 + 状态 API · 仅监听 127.0.0.1</text>
     <path class="arrow" d="M450 430 V292 H200 V290"/>`);
   const observer = svg(`
     <text class="title" x="55" y="62">观察者模式：一次变更，全部视图一致刷新</text>
     <rect class="box" x="70" y="150" rx="20" width="250" height="110"/><text class="label" x="118" y="208">用户操作</text>
     <rect class="box" x="420" y="150" rx="20" width="280" height="110"/><text class="label" x="465" y="208">AppController</text>
     <rect class="accent" x="800" y="150" rx="20" width="300" height="110"/><text class="label" x="850" y="198">FinanceStore</text><text class="small" x="855" y="232">Subject / 主题</text>
-    <rect class="box" x="800" y="430" rx="20" width="300" height="110"/><text class="label" x="850" y="478">DashboardView</text><text class="small" x="866" y="512">Observer / 观察者</text>
+    <rect class="box" x="800" y="430" rx="20" width="300" height="110"/><text class="label" x="850" y="478">AppController</text><text class="small" x="866" y="512">Observer / 观察者</text>
     <path class="arrow" d="M320 205 H405"/><text class="small" x="330" y="185">click / submit</text>
     <path class="arrow" d="M700 205 H785"/><text class="small" x="718" y="185">调用</text>
     <path class="arrow" d="M950 260 V415"/><text class="small" x="970" y="350">publish(event)</text>
     <path class="arrow" d="M785 485 H560 V275"/><text class="small" x="575" y="465">render(snapshot)</text>`);
   const dataModel = svg(`
-    <text class="title" x="55" y="62">核心数据对象与关系</text>
+    <text class="title" x="55" y="62">SQLite 数据库 ER 图</text>
     <rect class="accent" x="540" y="120" rx="20" width="320" height="150"/><text class="label" x="615" y="165">Transaction</text><text class="small" x="575" y="205">账户 · 类型 · 金额(分)</text><text class="small" x="575" y="238">日期 · 分类 · 批次标识</text>
     <rect class="box" x="70" y="400" rx="20" width="280" height="130"/><text class="label" x="150" y="450">Account</text><text class="small" x="110" y="490">1 ← N 笔交易</text>
     <rect class="box" x="410" y="400" rx="20" width="260" height="130"/><text class="label" x="485" y="450">Budget</text><text class="small" x="448" y="490">按月 + 分类聚合</text>
@@ -86,11 +92,11 @@ async function makeReport() {
     new Paragraph({ spacing: { before: 620, after: 180 }, alignment: AlignmentType.CENTER, children: [text("软件系统设计与体系结构综合实训", { bold: true, size: 34, color: colors.green })] }),
     new Paragraph({ spacing: { after: 750 }, alignment: AlignmentType.CENTER, children: [text("综合实训设计报告", { bold: true, size: 50, color: colors.ink })] }),
     new Paragraph({ spacing: { after: 520 }, alignment: AlignmentType.CENTER, children: [text("个人财务管理与可视化看板", { bold: true, size: 38, color: colors.blue })] }),
-    table(["项目", "信息"], [["学院", "计算机与信息工程学院"], ["小组成员", "蓝思钰 52302042011；姜萱萱 52302042008；刘晓盼 52302042019；王晨 52302042035；朱婷婷 52302042055"], ["班级", "【请填写班级】"], ["指导教师", "【请填写指导教师】"], ["完成日期", "2026 年 9 月"]], [2800, 5600]),
+    table(["项目", "信息"], [["学院", "计算机与信息工程学院"], ["小组成员", "蓝思钰 52302042011；姜萱萱 52302042008；刘晓盼 52302042019；王晨 52302042035；朱婷婷 52302042055"], ["班级", className], ["指导教师", instructor], ["完成日期", "2026 年 9 月"]], [2800, 5600]),
     new Paragraph({ children: [new PageBreak()] }),
     h("摘  要", HeadingLevel.HEADING_1),
     p("本项目设计并实现了一套本地优先的个人财务管理与可视化看板“一目”。系统面向拥有多个支付账户、希望建立预算与储蓄习惯的个人用户，围绕账户、交易、预算、目标和报表形成完整业务闭环。用户可以录入收入、支出和账户间转账，系统根据可追溯交易实时推导账户余额、净资产、月度现金流和预算使用状态；同时支持 CSV 账单导入、重复识别、批次撤销、目标进度管理、原始数据导出和彻底删除。"),
-    p("系统采用 MVC 分层架构和观察者模式。Model 集中封装金额、余额与报表计算规则，Controller 负责交互编排，View 根据只读状态渲染响应式界面。金额统一以整数分存储，避免浮点累计误差；本地服务器仅监听回环地址，并通过路径约束、内容安全策略和响应头降低本地演示风险。项目提供 30 项自动化测试、真实浏览器回归脚本、Java 17 可执行 JAR 和一键启动脚本，能够满足课程实训的设计、实现、测试、部署与答辩要求。"),
+    p("系统采用 MVC 分层架构和观察者模式。Model 集中封装金额、余额与报表计算规则，Controller 负责交互编排并订阅状态事件，View 根据只读快照渲染响应式界面。金额统一以整数分存储，Java 17 本地服务通过 REST API 把数据规范化写入 SQLite；项目提供 39 项 Node 自动化测试、5 项 JUnit 集成测试、真实浏览器回归脚本、可执行胖 JAR 和一键启动脚本，能够覆盖课程实训的设计、实现、测试、数据库与交付要求。"),
     p("关键词：个人财务；MVC；观察者模式；可视化看板；本地优先；软件体系结构"),
     new Paragraph({ children: [new PageBreak()] }),
     h("目  录", HeadingLevel.HEADING_1),
@@ -125,13 +131,14 @@ async function makeReport() {
     bullet("可部署性：提供 Java 17 可执行 JAR、Node 开发服务器和一键运行脚本。"),
     h("3 总体设计", HeadingLevel.HEADING_1, true),
     h("3.1 体系结构选择", HeadingLevel.HEADING_2),
-    p("系统采用 MVC 分层体系结构。表现层由响应式 HTML/CSS 与 DashboardView 组成；控制层由 AppController 统一处理导航、表单、筛选、导入导出和高影响确认；领域层由 FinanceStore 与一组纯计算函数组成；持久化层使用 localStorage，并通过 Java 或 Node 本地服务器交付静态资源。该结构使业务规则与界面实现解耦，后续可以在保持 View/Controller 大部分接口不变的情况下替换为 REST API 和数据库。"),
+    p("系统采用 MVC 分层体系结构。表现层由响应式 HTML/CSS 与 DashboardView 组成；控制层由 AppController 统一处理导航、表单、筛选、导入导出和高影响确认；领域层由 FinanceStore 与一组纯计算函数组成；持久化适配器在 JAR 模式下调用 Java REST API 和 SQLite，在 Node 开发模式下回退 localStorage。该结构使业务规则、界面和数据访问解耦。"),
     ...imageParagraph(architecture, 650, 325, "图 3-1  系统 MVC 分层与本地运行边界"),
     h("3.2 模块划分", HeadingLevel.HEADING_2),
-    table(["层次", "主要文件", "职责"], [["组装入口", "src/app.js", "创建 Store、View、Controller 并启动"], ["控制层", "src/controller/app-controller.js", "处理用户事件和业务流程"], ["模型层", "src/model/finance-model.js", "状态、校验、计算、持久化与通知"], ["视图层", "src/view/dashboard-view.js", "渲染六个业务页面和可视化"], ["演示数据", "src/data/seed-data.js", "首次启动时提供可讲解数据"], ["部署层", "src/main/java/.../Main.java", "本地静态资源服务与安全响应头"]], [1600, 3000, 3800]),
+    table(["层次", "主要文件", "职责"], [["组装入口", "src/app.js", "创建 Store、View、Controller 并启动"], ["控制层", "src/controller/app-controller.js", "处理用户事件并订阅 Model 状态"], ["模型层", "src/model/finance-model.js", "状态、校验、计算与具名事件"], ["视图层", "src/view/dashboard-view.js", "渲染六个业务页面和可视化"], ["持久化适配", "src/data/persistence.js", "REST API 优先，localStorage 降级"], ["数据访问层", "SqliteFinanceRepository.java", "事务化读写规范化 SQLite 表"]], [1600, 3000, 3800]),
     h("4 详细设计", HeadingLevel.HEADING_1, true),
     h("4.1 核心数据模型", HeadingLevel.HEADING_2),
-    ...imageParagraph(dataModel, 650, 325, "图 4-1  核心数据对象与关联"),
+    ...imageParagraph(dataModel, 650, 325, "图 4-1  SQLite 数据库 ER 图"),
+    table(["数据表", "主键", "用途"], [["accounts", "account_id", "账户与期初余额"], ["transactions", "transaction_id", "收入、支出、转账事实"], ["budgets", "budget_month + category", "分类月度预算"], ["goals", "goal_id", "储蓄与还债目标"], ["import_batches", "batch_id", "导入批次及撤销状态"], ["app_meta", "meta_key", "初始化状态"]], [2200, 2400, 3800]),
     table(["对象", "关键字段", "设计说明"], [["Account", "id, name, kind, openingBalanceCents", "账户只保存期初值，实时余额由交易推导"], ["Transaction", "type, amountCents, date, accountId", "收入、支出、转账统一建模"], ["Budget", "month, category, limitCents", "月份与分类构成逻辑唯一键"], ["Goal", "targetCents, currentCents, targetDate", "支持储蓄与还债目标"], ["ImportBatch", "id, transactionCount, status", "保存导入批次并支持整批撤销"]], [1500, 3500, 3400]),
     h("4.2 关键计算规则", HeadingLevel.HEADING_2),
     bullet("资产余额 = 期初余额 + 收入 + 转入 − 支出 − 转出。"),
@@ -141,13 +148,13 @@ async function makeReport() {
     bullet("预算使用率低于 80% 为正常，达到 80% 为提醒，达到 100% 为超支。"),
     bullet("转账只改变相关账户余额，不进入收入、支出和净现金流统计。"),
     h("4.3 关键业务流程", HeadingLevel.HEADING_2),
-    p("新增交易流程为：用户打开表单并选择类型 → Controller 读取并规范化字段 → Store 校验金额和账户引用 → 状态写入 localStorage → Store 发布具名变更事件 → Controller 取得新快照 → View 同步刷新余额、看板、预算和报表。编辑与删除交易复用同一条通知链，因此不会出现局部界面更新而其他指标滞后的问题。"),
+    p("新增交易流程为：用户打开表单并选择类型 → Controller 读取并规范化字段 → Store 校验金额和账户引用 → Persistence Adapter 调用 PUT /api/state → Java 服务在 SQLite 事务中更新规范化表 → Store 发布 transaction:added 事件 → Controller 取得新快照 → View 同步刷新余额、看板、预算和报表。"),
     h("5 设计模式应用", HeadingLevel.HEADING_1, true),
     h("5.1 观察者模式", HeadingLevel.HEADING_2),
     p("FinanceStore 作为主题维护观察者集合，subscribe 用于订阅，所有成功写操作在持久化后发布事件。AppController 订阅状态变更并调用 DashboardView.render。这样，新增交易等业务操作无需知道有哪些界面组件依赖它，降低了模型与 DOM 的耦合。"),
     ...imageParagraph(observer, 650, 325, "图 5-1  观察者模式协作过程"),
     h("5.2 策略化计算与适配点", HeadingLevel.HEADING_2),
-    p("账户余额、月度汇总、预算进度、现金流序列和分类结构均实现为独立纯函数，可以视为可替换的计算策略。持久化通过统一 load/save 入口与业务操作隔离，当前适配 localStorage，未来可替换为远程仓储；服务器实现也同时提供 Node 开发形态和 Java 交付形态。"),
+    p("账户余额、月度汇总、预算进度、现金流序列和分类结构均实现为独立纯函数，可以视为可替换的计算策略。持久化通过统一 load/save 接口与业务操作隔离，Java 交付形态使用 SQLite，Node 开发形态使用 localStorage 降级。"),
     h("6 系统实现", HeadingLevel.HEADING_1, true),
     h("6.1 页面与交互", HeadingLevel.HEADING_2),
     p("系统使用深海军蓝、克制绿色和橙色告警构成统一视觉语言。左侧导航在移动端转换为底部六宫格；概览页将净资产和本月现金流置于首要层级；交易、预算和目标均提供明确的创建及维护入口；报表页同时呈现趋势、结构和文字洞察。"),
@@ -159,20 +166,20 @@ async function makeReport() {
     p("Maven 在构建时把 index.html、styles.css 与 src 下的 JavaScript 复制到 JAR 的 web 目录，Main 类使用 JDK 自带 HttpServer 从类路径读取资源。程序默认只绑定 127.0.0.1:4173，运行后浏览器访问该地址即可。run.bat 封装了 java -jar 命令，适合课堂现场演示。"),
     h("7 测试与质量保证", HeadingLevel.HEADING_1, true),
     h("7.1 测试方法", HeadingLevel.HEADING_2),
-    table(["测试层次", "覆盖内容", "结果"], [["领域单元测试", "余额、净资产、预算边界、CSV、重复识别、观察者、目标、报表、清空", "全部通过"], ["结构与安全测试", "MVC 组装、六页面、可访问表单、路径穿越、隐藏目录、JAR 配置", "全部通过"], ["文档检查", "必需章节与 Markdown 内部链接", "全部通过"], ["浏览器回归", "交易编辑、搜索筛选、导入撤销、预算、目标、报表、响应式截图", "全部通过"]], [1800, 5000, 1600]),
+    table(["测试层次", "覆盖内容", "结果"], [["Node 领域单元测试", "余额、净资产、预算边界、CSV、观察者、目标、报表", "全部通过"], ["JUnit 数据库/API", "建表、事务持久化、跨重启恢复、接口限制", "全部通过"], ["结构与安全测试", "MVC、页面、路径穿越、隐藏目录、JAR 配置", "全部通过"], ["浏览器回归", "交易编辑、导入撤销、预算、目标、报表、响应式布局", "全部通过"]], [1800, 5000, 1600]),
     h("7.2 关键测试用例", HeadingLevel.HEADING_2),
     table(["编号", "场景", "预期结果"], [["T01", "资产账户发生收入、支出和转账", "余额按规则准确更新"], ["T02", "信用卡消费后通过资产账户还款", "负债先增加后减少"], ["T03", "收入为零时计算结余率", "返回不适用，无 Infinity/NaN"], ["T04", "CSV 含引号商户并重复导入", "正确解析并提示疑似重复"], ["T05", "撤销一个导入批次", "仅移除该批次交易并重算指标"], ["T06", "访问编码路径穿越地址", "服务器拒绝并不暴露文件"], ["T07", "切换到报表页", "趋势、分类结构和洞察均可见"]], [1000, 4100, 3300]),
-    p("截至提交版本，Node 自动化测试共 32 项，全部通过；真实 Chromium 回归执行通过，页面无控制台错误。测试命令为 npm run validate 和 npm run test:browser。"),
+    p("截至提交版本，Node 自动化测试共 39 项、JUnit 集成测试共 5 项，全部通过；真实 Chromium 回归在交付 JAR 上执行通过，页面无控制台错误。测试命令为 npm run validate、mvn test 和 npm run test:browser。"),
     h("8 安全性与可靠性", HeadingLevel.HEADING_1, true),
     bullet("所有写入 innerHTML 的用户字段统一做 HTML 实体编码，降低存储型脚本注入风险。"),
     bullet("CSV 内容上限为 2MB；交易金额必须为正；账户引用必须存在；编辑不存在记录时拒绝静默创建。"),
-    bullet("Java 与 Node 服务器都只允许 GET/HEAD，拒绝路径穿越和隐藏目录访问。"),
+    bullet("静态资源只允许 GET/HEAD；状态 API 只允许 GET/PUT，并拒绝超过 2MB 的请求。"),
     bullet("响应包含 CSP、X-Content-Type-Options、X-Frame-Options 和 Referrer-Policy。"),
     bullet("清空全部数据、删除交易、撤销导入等高影响操作均需用户确认。"),
     bullet("本地存储不宣称提供多用户隔离；若产品化，必须增加认证授权、服务端事务、传输和静态加密。"),
     h("9 项目成果与总结", HeadingLevel.HEADING_1, true),
     p("本项目完成了从需求分析、产品设计、体系结构设计、详细设计到编码、测试和部署的完整实训链路。系统不以静态原型结束，而是交付可直接运行的 Java 程序和配套源代码；核心业务闭环、报表分析、数据治理及安全边界均有实现与测试证据。MVC 使关注点清晰分离，观察者模式保证不同视图对同一状态变更保持一致，整数分和纯函数计算提高了财务数据的正确性与可测试性。"),
-    p("后续可以在保持领域接口稳定的基础上增加登录与服务端数据库、可视化字段映射、分类维护、年度预算和多端同步。本次实训说明了体系结构并非形式化图示，而是直接影响代码可读性、变化成本、测试难度和部署可靠性的工程决策。"),
+    p("后续可以在保持领域接口稳定的基础上增加登录授权、数据库迁移、可视化字段映射、年度预算和多端同步。本次实训说明了体系结构并非形式化图示，而是直接影响代码可读性、变化成本、测试难度和部署可靠性的工程决策。"),
     h("10 小组分工", HeadingLevel.HEADING_1, true),
     table(["成员", "学号", "主要工作", "贡献比例"], [["蓝思钰", "52302042011", "需求分析、产品方案与总体设计", "20%"], ["姜萱萱", "52302042008", "界面设计、响应式布局与交互实现", "20%"], ["刘晓盼", "52302042019", "领域模型、业务规则与报表计算", "20%"], ["王晨", "52302042035", "数据导入、安全控制与自动化测试", "20%"], ["朱婷婷", "52302042055", "部署打包、实训报告与答辩材料", "20%"]], [1800, 1800, 3900, 1200]),
     h("参考文献", HeadingLevel.HEADING_1, true),
@@ -237,7 +244,7 @@ async function makePresentation() {
   slide.addShape("roundRect", { x: 8.6, y: 1.2, w: 3.65, h: 4.75, fill: { color: colors.white, transparency: 5 }, line: { color: "33536F" }, radius: 0.08 });
   slide.addText("一目", { x: 9.1, y: 2.1, w: 2.65, h: 0.8, fontSize: 36, bold: true, color: colors.green, align: "center", margin: 0 });
   slide.addText("账户 · 交易 · 预算\n目标 · 报表 · 数据治理", { x: 9.05, y: 3.25, w: 2.75, h: 1.0, fontSize: 14, color: colors.ink, align: "center", breakLine: false, margin: 0, fit: "shrink" });
-  slide.addText("小组成员\n蓝思钰 52302042011 · 姜萱萱 52302042008 · 刘晓盼 52302042019\n王晨 52302042035 · 朱婷婷 52302042055\n班级：【请填写】   指导教师：【请填写】", { x: 0.88, y: 5.18, w: 7.15, h: 1.22, fontSize: 10.5, color: "B9CAD5", breakLine: false, margin: 0, fit: "shrink" });
+  slide.addText(`小组成员\n蓝思钰 52302042011 · 姜萱萱 52302042008 · 刘晓盼 52302042019\n王晨 52302042035 · 朱婷婷 52302042055\n班级：${className}   指导教师：${instructor}`, { x: 0.88, y: 5.18, w: 7.15, h: 1.22, fontSize: 10.5, color: "B9CAD5", breakLine: false, margin: 0, fit: "shrink" });
   addNotes(slide, "开场说明：本项目不是静态原型，而是一套可运行、可测试、可打包的课程提交版。先介绍为什么做，再展示体系结构和现场演示路径。");
 
   slide = pptx.addSlide(); addTitle(slide, "01  从流水记录到财务决策", 2);
@@ -261,13 +268,13 @@ async function makePresentation() {
   addCard(slide, 8.35, 1.72, 4.15, 1.2, "Model", "封装状态、校验、整数分计算与持久化；不依赖 DOM。", colors.green);
   addCard(slide, 8.35, 3.12, 4.15, 1.2, "Controller", "编排表单、导航、导入导出和高影响确认。", colors.blue);
   addCard(slide, 8.35, 4.52, 4.15, 1.2, "View", "消费只读快照，统一渲染六个业务视图。", colors.orange);
-  slide.addText("可替换点：localStorage → REST/数据库；Node 开发服务器 → Java 交付程序", { x: 0.85, y: 6.15, w: 11.5, h: 0.35, fontSize: 13, color: colors.soft, align: "center", margin: 0 });
+  slide.addText("持久化边界：JAR 模式 REST API → SQLite；Node 开发模式回退 localStorage", { x: 0.85, y: 6.15, w: 11.5, h: 0.35, fontSize: 13, color: colors.soft, align: "center", margin: 0 });
   addNotes(slide, "解释每层只做什么，以及为什么余额、报表计算必须放在 Model。指出未来切换后端时，界面与大部分控制逻辑可保持不变。");
 
   slide = pptx.addSlide(); addTitle(slide, "04  观察者模式保证所有指标同步", 5);
   slide.addImage({ path: path.join(assetDir, "observer.png"), x: 0.85, y: 1.7, w: 7.1, h: 3.55 });
   slide.addText("新增一笔交易后", { x: 8.35, y: 1.82, w: 3.8, h: 0.4, fontSize: 18, bold: true, color: colors.ink, margin: 0 });
-  const steps = ["① Store 校验账户和金额", "② 写入本地状态并持久化", "③ 发布 transaction:add 事件", "④ Controller 获取最新快照", "⑤ 余额、预算、图表、报表同时刷新"];
+  const steps = ["① Store 校验账户和金额", "② REST API 事务写入 SQLite", "③ 发布 transaction:added 事件", "④ Controller 获取最新快照", "⑤ 余额、预算、图表、报表同时刷新"];
   steps.forEach((s, i) => slide.addText(s, { x: 8.35, y: 2.45 + i * 0.62, w: 3.9, h: 0.34, fontSize: 13, color: i === 4 ? colors.green : colors.soft, bold: i === 4, margin: 0 }));
   slide.addShape("roundRect", { x: 8.3, y: 5.75, w: 4.05, h: 0.75, fill: { color: colors.greenSoft }, line: { color: colors.greenSoft } });
   slide.addText("收益：低耦合、一致性、可测试", { x: 8.55, y: 5.97, w: 3.55, h: 0.25, fontSize: 14, bold: true, color: colors.green, align: "center", margin: 0 });
@@ -298,15 +305,15 @@ async function makePresentation() {
   addNotes(slide, "说明图表数据全部来自同一个交易集合，切换月份即可重算。强调洞察是规则化建议，不是投资建议。");
 
   slide = pptx.addSlide(); addTitle(slide, "08  安全与可靠性是提交版的一部分", 9);
-  const safeguards = [["输入与输出", "字段长度/金额/类型校验\nHTML 实体编码", colors.green], ["导入安全", "文件不超过 2MB\n重复识别与批次撤销", colors.blue], ["服务边界", "仅 127.0.0.1\n只允许 GET / HEAD", colors.ink], ["路径安全", "拒绝路径穿越\n拒绝 .git 等隐藏目录", colors.orange], ["浏览器策略", "CSP / nosniff\n禁止 iframe 嵌入", colors.green], ["用户主权", "JSON 导出\n高风险删除必须确认", colors.blue]];
+  const safeguards = [["输入与输出", "字段长度/金额/类型校验\nHTML 实体编码", colors.green], ["导入安全", "文件不超过 2MB\n重复识别与批次撤销", colors.blue], ["服务边界", "仅 127.0.0.1\n静态 GET/HEAD · API GET/PUT", colors.ink], ["数据库", "SQLite 外键\n事务与请求体上限", colors.orange], ["浏览器策略", "CSP / nosniff\n禁止 iframe 嵌入", colors.green], ["用户主权", "JSON 导出\n高风险删除必须确认", colors.blue]];
   safeguards.forEach(([a, b, c], i) => addCard(slide, 0.8 + (i % 3) * 4.08, 1.82 + Math.floor(i / 3) * 2.15, 3.65, 1.72, a, b, c));
-  slide.addText("边界声明：localStorage 适合课程单用户演示；产品化必须补充认证、授权、加密和备份", { x: 0.9, y: 6.18, w: 11.55, h: 0.35, fontSize: 12.5, color: colors.soft, align: "center", margin: 0 });
+  slide.addText("边界声明：SQLite 适合本机单用户演示；产品化仍需认证、授权、加密和备份", { x: 0.9, y: 6.18, w: 11.55, h: 0.35, fontSize: 12.5, color: colors.soft, align: "center", margin: 0 });
   addNotes(slide, "说明我们没有把本地存储包装成生产级安全。安全设计包括技术控制，也包括清晰的信任边界声明。");
 
   slide = pptx.addSlide(); addTitle(slide, "09  测试证据与可执行交付", 10);
-  slide.addText("32", { x: 0.9, y: 1.78, w: 2.1, h: 0.9, fontSize: 48, bold: true, color: colors.green, align: "center", margin: 0 });
+  slide.addText("44", { x: 0.9, y: 1.78, w: 2.1, h: 0.9, fontSize: 48, bold: true, color: colors.green, align: "center", margin: 0 });
   slide.addText("自动化测试全部通过", { x: 0.9, y: 2.73, w: 2.1, h: 0.35, fontSize: 12, color: colors.soft, align: "center", margin: 0 });
-  slide.addText("4", { x: 3.55, y: 1.78, w: 2.1, h: 0.9, fontSize: 48, bold: true, color: colors.blue, align: "center", margin: 0 });
+  slide.addText("5", { x: 3.55, y: 1.78, w: 2.1, h: 0.9, fontSize: 48, bold: true, color: colors.blue, align: "center", margin: 0 });
   slide.addText("测试层次", { x: 3.55, y: 2.73, w: 2.1, h: 0.35, fontSize: 12, color: colors.soft, align: "center", margin: 0 });
   slide.addText("0", { x: 6.2, y: 1.78, w: 2.1, h: 0.9, fontSize: 48, bold: true, color: colors.orange, align: "center", margin: 0 });
   slide.addText("浏览器控制台错误", { x: 6.2, y: 2.73, w: 2.1, h: 0.35, fontSize: 12, color: colors.soft, align: "center", margin: 0 });
@@ -315,7 +322,7 @@ async function makePresentation() {
   addCard(slide, 4.83, 3.65, 3.55, 1.65, "结构 / 安全测试", "MVC 页面结构、路径穿越、隐藏目录和安全响应头", colors.blue);
   addCard(slide, 8.76, 3.65, 3.55, 1.65, "真实浏览器回归", "交易编辑、导入撤销、预算、目标、报表和响应式布局", colors.orange);
   slide.addShape("roundRect", { x: 2.1, y: 5.87, w: 9.1, h: 0.65, fill: { color: colors.ink }, line: { color: colors.ink } });
-  slide.addText("交付：源代码 + JAR + 报告 + PPT + 测试脚本 + 提交说明", { x: 2.35, y: 6.05, w: 8.6, h: 0.26, fontSize: 13, bold: true, color: colors.white, align: "center", margin: 0 });
+  slide.addText("交付：源代码 + 胖 JAR + SQLite/SQL + 报告 + PPT + 测试", { x: 2.35, y: 6.05, w: 8.6, h: 0.26, fontSize: 13, bold: true, color: colors.white, align: "center", margin: 0 });
   addNotes(slide, "如果老师问如何证明不是静态页面，可现场运行 npm run validate，再双击 run.bat 启动 JAR。浏览器测试还会真实填写表单并截图。");
 
   slide = pptx.addSlide();

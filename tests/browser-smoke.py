@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
@@ -5,6 +6,7 @@ from playwright.sync_api import sync_playwright
 
 ARTIFACTS = Path(__file__).parent / "artifacts"
 ARTIFACTS.mkdir(exist_ok=True)
+BASE_URL = os.environ.get("FINANCE_DASHBOARD_URL", "http://127.0.0.1:4173")
 
 
 with sync_playwright() as playwright:
@@ -13,10 +15,15 @@ with sync_playwright() as playwright:
     errors = []
     page.on("console", lambda message: errors.append(message.text) if message.type == "error" else None)
     page.on("pageerror", lambda error: errors.append(str(error)))
+    page.on(
+        "response",
+        lambda response: errors.append(
+            f"HTTP {response.status} {response.url}"
+        ) if response.status >= 400 else None,
+    )
 
-    page.goto("http://127.0.0.1:4173")
-    page.wait_for_load_state("networkidle")
-    assert page.locator("[data-page='dashboard']").is_visible()
+    page.goto(BASE_URL, wait_until="domcontentloaded")
+    page.locator("[data-page='dashboard']").wait_for(state="visible")
     assert "当前净资产" in page.locator("#dashboard-content").inner_text()
 
     page.locator("[data-action='new-transaction']").click()

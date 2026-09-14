@@ -5,13 +5,13 @@
 | 版本 | v1.0 |
 | 更新日期 | 2026-09-14 |
 | 技术形态 | 原生 JavaScript 响应式 Web 应用 |
-| 数据模式 | 浏览器本地优先 |
+| 数据模式 | SQLite 本地数据库；开发模式降级为浏览器本地存储 |
 
 ## 1. 实现目标
 
 当前版本聚焦“账户—交易—预算—目标—看板”闭环：用户新增或编辑一笔交易后，账户余额、净资产、现金流、图表和预算进度在同一次状态变更中刷新。实现不依赖第三方运行时库，便于在实训环境中直接启动、阅读和演示。
 
-当前版本是可运行、可测试、可独立打包的课程实训提交版，不包含登录、云端同步、多人协作和服务端数据库。若进入真实生产环境，需要补充后端身份认证、数据库事务、加密和备份策略。
+当前版本是可运行、可测试、可独立打包的课程实训提交版。Java 17 交付程序提供同源 REST API，并把账户、交易、预算、目标和导入批次规范化存入 SQLite。课程版本仍不包含登录、云端同步和多人协作；若进入真实生产环境，需要补充身份认证、授权、传输加密和备份策略。
 
 ## 2. MVC 体系结构
 
@@ -19,8 +19,11 @@
 flowchart LR
     U[用户操作] --> C[Controller\nAppController]
     C --> M[Model\nfinance-model]
-    M --> S[(localStorage)]
-    M -->|状态事件| V[View\nDashboardView]
+    M --> A[Persistence Adapter]
+    A -->|JAR 模式| R[REST API]
+    R --> S[(SQLite)]
+    A -->|Node 降级| L[(localStorage)]
+    M -->|状态事件| C
     V --> D[DOM 页面]
     D --> U
 ```
@@ -28,7 +31,7 @@ flowchart LR
 - Model：保存账户、交易、预算和目标数据，负责整数分金额计算、账户余额、月度汇总、预算状态、CSV 解析和重复识别。
 - View：把只读状态渲染为看板、交易、账户和预算四个页面，不直接修改业务数据。
 - Controller：接收导航、表单、筛选、导入和导出事件，校验交互规则后调用 Model，再驱动 View 更新。
-- Persistence：Model 每次成功变更后，将状态快照写入 `localStorage`。该适配点可在后续替换为 REST API。
+- Persistence：Model 每次成功变更后调用适配器；JAR 模式写入本机 SQLite，Node 开发模式在 API 不可用时回退到 `localStorage`。
 
 代码位置：
 
@@ -43,7 +46,7 @@ src/
 
 ## 3. 观察者模式
 
-`createFinanceStore` 是主题（Subject），View 订阅它的状态变更。新增交易、删除交易、添加账户、导入数据或修改预算后，Store 发布具名事件；Controller 收到通知并重新渲染。这使业务变更与具体 DOM 操作解耦。
+`createFinanceStore` 是主题（Subject），Controller 订阅它的状态变更。新增交易、删除交易、添加账户、导入数据或修改预算后，Store 发布具名事件；Controller 收到通知并把最新只读快照交给 View 渲染。这使业务变更与具体 DOM 操作解耦。
 
 ```mermaid
 classDiagram
@@ -95,6 +98,8 @@ Goal        { id, name, currentCents, targetCents, targetDate }
 ImportBatch { id, fileName, createdAt, transactionCount, status }
 ```
 
+上述对象映射为 `accounts`、`transactions`、`budgets`、`goals`、`import_batches` 五张业务表，另以 `app_meta` 记录数据库初始化状态。外键、索引、ER 图和字段级表结构见[数据库设计文档](database-design.md)，可执行 SQL 位于 `database/schema.sql`。
+
 交易是余额和报表的可追溯来源。账户只保存期初余额，当前余额由期初余额与全部相关交易推导。导入交易保留批次标识，撤销批次时按标识移除全部关联交易，并保留已撤销状态用于追溯。
 
 ## 6. CSV 导入格式
@@ -122,15 +127,15 @@ ImportBatch { id, fileName, createdAt, transactionCount, status }
 
 - 所有写入 `innerHTML` 的用户字段都经过 HTML 编码，避免交易备注或商户名称形成脚本。
 - CSV 内容上限为 2MB，金额和交易类型在进入 Store 前校验。
-- 本地服务器只接受 `GET` 和 `HEAD`，解析并约束静态文件路径，拒绝路径穿越请求。
+- 静态资源只接受 `GET` 和 `HEAD`；状态接口只接受 `GET` 和 `PUT`，请求体限制为 2MB，并在事务中更新 SQLite。
 - 静态响应包含 CSP、禁止 MIME 嗅探、禁止嵌入和不发送来源信息等安全响应头。
 - 项目没有第三方运行时依赖、远程脚本、身份令牌或源码内密钥。
 
-本地存储不是服务端安全边界，同一浏览器配置下能运行脚本的人可能读取数据。因此当前版本不声称提供多用户隔离；云端版本必须重新完成身份认证、授权、传输加密和静态加密威胁建模。
+SQLite 文件和浏览器降级存储都属于本机数据，不构成多用户安全边界。因此当前版本不声称提供多用户隔离；云端版本必须重新完成身份认证、授权、传输加密和静态加密威胁建模。
 
 ## 9. 后续演进
 
-1. 将 Store 持久化适配器替换为后端 REST API 和关系数据库，并保持 View/Controller 接口不变。
+1. 将本机 REST API 演进为具备认证、授权和迁移机制的远程服务，并保持 View/Controller 接口不变。
 2. 增加用户身份认证、密码哈希、服务端授权和安全审计。
 3. 完成 CSV 可视化字段映射和逐条冲突处理。
 4. 增加分类与标签维护、目标账户自动关联。

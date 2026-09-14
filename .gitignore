@@ -1,4 +1,5 @@
 tests/artifacts/*.png
 target/
+data/*.db
 deliverables/assets/
 deliverables/rendered/
