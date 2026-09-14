@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="本地优先的个人财务管理与可视化看板" />
+    <title>一目 · 个人财务看板</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="主导航">
+        <a class="brand" href="#dashboard" data-route="dashboard" aria-label="一目首页">
+          <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span>一目</span>
+        </a>
+        <nav class="main-nav">
+          <button class="nav-item is-active" type="button" data-route="dashboard">
+            <span aria-hidden="true">⌂</span><b>概览</b>
+          </button>
+          <button class="nav-item" type="button" data-route="transactions">
+            <span aria-hidden="true">↕</span><b>交易</b>
+          </button>
+          <button class="nav-item" type="button" data-route="accounts">
+            <span aria-hidden="true">▤</span><b>账户</b>
+          </button>
+          <button class="nav-item" type="button" data-route="budgets">
+            <span aria-hidden="true">◔</span><b>预算</b>
+          </button>
+        </nav>
+        <div class="sidebar-foot">
+          <button class="quiet-action" type="button" data-action="export-data">导出数据</button>
+          <p>数据仅保存在此浏览器</p>
+        </div>
+      </aside>
+
+      <div class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="today" id="today-label"></p>
+            <h1 id="page-title">财务概览</h1>
+          </div>
+          <div class="topbar-actions">
+            <label class="month-control">
+              <span class="sr-only">查看月份</span>
+              <input id="month-picker" type="month" value="2026-09" />
+            </label>
+            <button class="icon-button" type="button" data-action="toggle-privacy" aria-label="隐藏全部金额" aria-pressed="false">◉</button>
+            <button class="primary-button" type="button" data-action="new-transaction"><span aria-hidden="true">＋</span> 记一笔</button>
+          </div>
+        </header>
+
+        <main id="main-content">
+          <section class="page is-active" data-page="dashboard" aria-labelledby="page-title">
+            <div id="dashboard-content"></div>
+          </section>
+
+          <section class="page" data-page="transactions" aria-labelledby="transactions-title" hidden>
+            <div class="section-heading">
+              <div><p class="section-kicker">逐笔可追溯</p><h2 id="transactions-title">交易明细</h2></div>
+              <div class="heading-actions">
+                <input class="search-input" id="transaction-search" type="search" placeholder="搜索商户、分类或备注" />
+                <button class="secondary-button" type="button" data-action="import-csv">导入 CSV</button>
+                <input id="csv-input" type="file" accept=".csv,text/csv" hidden />
+              </div>
+            </div>
+            <div class="filter-row" role="group" aria-label="交易类型筛选">
+              <button class="filter-chip is-active" type="button" data-filter="all">全部</button>
+              <button class="filter-chip" type="button" data-filter="expense">支出</button>
+              <button class="filter-chip" type="button" data-filter="income">收入</button>
+              <button class="filter-chip" type="button" data-filter="transfer">转账</button>
+            </div>
+            <div id="transaction-list"></div>
+          </section>
+
+          <section class="page" data-page="accounts" aria-labelledby="accounts-title" hidden>
+            <div class="section-heading">
+              <div><p class="section-kicker">钱与债在哪里</p><h2 id="accounts-title">全部账户</h2></div>
+              <button class="secondary-button" type="button" data-action="new-account">添加账户</button>
+            </div>
+            <div id="account-list" class="account-grid"></div>
+          </section>
+
+          <section class="page" data-page="budgets" aria-labelledby="budgets-title" hidden>
+            <div class="section-heading">
+              <div><p class="section-kicker">把钱留给重要的事</p><h2 id="budgets-title">月度预算</h2></div>
+              <button class="secondary-button" type="button" data-action="new-budget">设置预算</button>
+            </div>
+            <div id="budget-list" class="budget-page-list"></div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <dialog id="transaction-dialog" aria-labelledby="transaction-dialog-title">
+      <form id="transaction-form" method="dialog" class="dialog-form">
+        <div class="dialog-heading"><div><p>新增记录</p><h2 id="transaction-dialog-title">记一笔</h2></div><button type="button" class="close-button" data-close-dialog aria-label="关闭">×</button></div>
+        <div class="segmented-control" role="group" aria-label="交易类型">
+          <label><input type="radio" name="type" value="expense" checked /><span>支出</span></label>
+          <label><input type="radio" name="type" value="income" /><span>收入</span></label>
+          <label><input type="radio" name="type" value="transfer" /><span>转账</span></label>
+        </div>
+        <label class="amount-field"><span>金额</span><span class="amount-input"><i>¥</i><input name="amount" type="number" min="0.01" step="0.01" placeholder="0.00" required /></span></label>
+        <div class="field-grid">
+          <label><span>账户</span><select name="accountId" data-account-select required></select></label>
+          <label data-target-account hidden><span>转入账户</span><select name="targetAccountId" data-account-select></select></label>
+          <label><span>日期</span><input name="date" type="date" required /></label>
+          <label data-category-field><span>分类</span><select name="category"><option>餐饮</option><option>交通</option><option>居住</option><option>购物</option><option>娱乐</option><option>医疗</option><option>工资</option><option>理财收益</option><option>其他</option></select></label>
+          <label><span>商户 / 对方</span><input name="merchant" type="text" maxlength="40" placeholder="选填" /></label>
+          <label class="field-wide"><span>备注</span><input name="note" type="text" maxlength="80" placeholder="选填" /></label>
+        </div>
+        <div class="dialog-actions"><button class="text-button" type="button" data-close-dialog>取消</button><button class="primary-button" type="submit">保存记录</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="account-dialog" aria-labelledby="account-dialog-title">
+      <form id="account-form" method="dialog" class="dialog-form compact-form">
+        <div class="dialog-heading"><div><p>资产与负债</p><h2 id="account-dialog-title">添加账户</h2></div><button type="button" class="close-button" data-close-dialog aria-label="关闭">×</button></div>
+        <label><span>账户名称</span><input name="name" required maxlength="24" placeholder="例如：工资卡" /></label>
+        <label><span>账户性质</span><select name="kind"><option value="asset">资产账户</option><option value="liability">负债账户</option></select></label>
+        <label><span>账户类型</span><select name="type"><option>银行卡</option><option>现金</option><option>第三方支付</option><option>信用卡</option><option>其他</option></select></label>
+        <label><span>期初余额</span><input name="openingBalance" type="number" min="0" step="0.01" value="0" required /></label>
+        <div class="dialog-actions"><button class="text-button" type="button" data-close-dialog>取消</button><button class="primary-button" type="submit">添加账户</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="budget-dialog" aria-labelledby="budget-dialog-title">
+      <form id="budget-form" method="dialog" class="dialog-form compact-form">
+        <div class="dialog-heading"><div><p>控制本月节奏</p><h2 id="budget-dialog-title">设置分类预算</h2></div><button type="button" class="close-button" data-close-dialog aria-label="关闭">×</button></div>
+        <label><span>分类</span><select name="category"><option>餐饮</option><option>交通</option><option>居住</option><option>购物</option><option>娱乐</option><option>医疗</option></select></label>
+        <label><span>预算金额</span><input name="amount" type="number" min="1" step="0.01" required placeholder="1000.00" /></label>
+        <div class="dialog-actions"><button class="text-button" type="button" data-close-dialog>取消</button><button class="primary-button" type="submit">保存预算</button></div>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>
