@@ -3,3 +3,4 @@ target/
 data/*.db
 deliverables/assets/
 deliverables/rendered/
+node_modules/

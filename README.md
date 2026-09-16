@@ -6,7 +6,7 @@
 
 ## 快速开始
 
-推荐直接双击 `run.bat` 启动提交包；开发调试需要 Node.js 20 或更高版本，在项目根目录运行：
+双击 `run.bat` 即可启动：包含 JAR 的完整提交包以 JAR 模式运行（需 JDK 17+）；只有源代码、没有 JAR 的包会自动以 Node 开发模式运行（需 Node.js 20+，首次运行会自动安装依赖）。也可以手动启动：
 
 ```powershell
 npm start
@@ -70,8 +70,8 @@ py -3 tests/browser-smoke.py
 
 `deliverables/` 中提供可执行 JAR、SQLite 数据库、建表 SQL、综合实训设计报告、答辩 PPT、校验和与提交说明。
 
-使用真实班级和指导教师信息一键重建全部提交材料：
+使用真实班级和指导教师信息一键重建全部提交材料（Windows PowerShell 5.1 与 7 均可运行）：
 
 ```powershell
-pwsh -File scripts/build-submission.ps1 -ClassName "实际班级" -Instructor "指导教师姓名"
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-submission.ps1 -ClassName "实际班级" -Instructor "指导教师姓名"
 ```

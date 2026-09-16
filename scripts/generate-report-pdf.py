@@ -10,7 +10,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
     BaseDocTemplate, Frame, Image, KeepTogether, PageBreak, PageTemplate,
-    Paragraph, Spacer, Table, TableStyle
+    Paragraph, Preformatted, Spacer, Table, TableStyle
 )
 
 
@@ -109,6 +109,16 @@ def figure(path, width, height, label):
     return KeepTogether([Image(str(path), width=width, height=height), Paragraph(label, caption)])
 
 
+CODE_STYLE = ParagraphStyle("CodeCN", fontName="CN", fontSize=8.5, leading=13,
+                            leftIndent=14, rightIndent=14, textColor=INK,
+                            backColor=colors.HexColor("#F4F6F8"), borderPadding=6,
+                            spaceBefore=3, spaceAfter=8)
+
+
+def code(lines):
+    return Preformatted("\n".join(lines), CODE_STYLE, maxLineLength=160)
+
+
 story = [
     Spacer(1, 1.1 * cm),
     Paragraph("蚌埠学院", ParagraphStyle("school", parent=cover, fontSize=23, textColor=INK)),
@@ -164,8 +174,36 @@ story = [
     ], [2.7 * cm, 6.2 * cm, 5.8 * cm]),
     H2("4.2 关键计算规则"),
     *bullets(["资产余额 = 期初余额 + 收入 + 转入 - 支出 - 转出。", "负债余额 = 期初未偿金额 + 消费支出 - 还款转入。", "净资产 = 资产余额合计 - 负债余额合计。", "结余率 = (收入 - 支出) / 收入；收入为零时显示不适用。", "预算使用率低于 80% 为正常，达到 80% 为提醒，达到 100% 为超支。", "转账只改变相关账户余额，不进入收入、支出和净现金流统计。"]),
+    H2("4.3 关键业务流程"),
+    P("新增交易流程为：用户打开表单并选择类型，Controller 读取并规范化字段，Store 校验金额和账户引用，Persistence Adapter 调用 PUT /api/state，Java 服务在 SQLite 事务中更新规范化表，随后 Store 发布 transaction:added 事件，Controller 取得新快照，View 同步刷新余额、看板、预算和报表。"),
+    figure(ASSETS / "sequence.png", 16.0 * cm, 9.83 * cm, "图 4-2  新增交易时序图"),
     PageBreak(), H1("5 设计模式应用"), H2("5.1 观察者模式"),
     P("FinanceStore 作为主题维护观察者集合。所有成功写操作在持久化后发布具名事件，AppController 订阅变更并调用 DashboardView.render。模型无需知道有多少界面组件依赖它，从而降低耦合并保证不同视图同步。"),
+    P("关键代码片段如下，完整实现见 src/model/finance-model.js 与 src/controller/app-controller.js。"),
+    code(["// 主题（Subject）：FinanceStore 维护观察者集合，状态变更后发布事件",
+          "const observers = new Set();",
+          "const publish = (event) => {",
+          "  persist(clone(state));",
+          "  observers.forEach((observer) => observer(clone(state), event));",
+          "};",
+          "// 观察者注册与注销接口",
+          "subscribe(observer) {",
+          "  observers.add(observer);",
+          "  return () => observers.delete(observer);",
+          "}",
+          "// 业务写操作成功后发布具名事件",
+          "addTransaction(transaction) {",
+          "  validateTransaction(transaction);",
+          "  state.transactions.unshift({ id: transaction.id, ...clone(transaction) });",
+          "  publish(\"transaction:added\");",
+          "}"]),
+    P("观察者（Observer）：AppController 启动时订阅 Store，收到事件后立即用最新只读快照刷新全部视图。"),
+    code(["// app-controller.js —— 观察者订阅状态变更",
+          "start() {",
+          "  this.store.subscribe(() => this.render());",
+          "  this.bindEvents();",
+          "  this.render();",
+          "}"]),
     figure(ASSETS / "observer.png", 16.0 * cm, 8.0 * cm, "图 5-1  观察者模式协作过程"),
     H2("5.2 策略化计算与适配点"),
     P("账户余额、月度汇总、预算进度、现金流序列和分类结构均为独立纯函数，可作为可替换的计算策略。持久化通过统一 load/save 接口隔离，Java 交付形态使用 SQLite，Node 开发形态使用 localStorage 降级。"),
@@ -197,7 +235,7 @@ story = [
     P("本项目完成了从需求分析、产品设计、体系结构设计、详细设计到编码、测试和部署的完整实训链路。系统交付可直接运行的 Java 程序和配套源代码；核心业务闭环、报表分析、数据治理及安全边界均有实现与测试证据。MVC 使关注点清晰分离，观察者模式保证不同视图对同一状态变更保持一致，整数分和纯函数计算提高了财务数据的正确性与可测试性。"),
     P("后续可以在保持领域接口稳定的基础上增加登录授权、数据库迁移、可视化字段映射、年度预算和多端同步。本次实训说明了体系结构会直接影响代码可读性、变化成本、测试难度和部署可靠性。"),
     H1("10 小组分工"),
-    data_table(["成员", "学号", "主要工作", "贡献比例"], [["蓝思钰", "52302042011", "需求分析、产品方案与总体设计", "20%"], ["姜萱萱", "52302042008", "界面设计、响应式布局与交互实现", "20%"], ["刘晓盼", "52302042019", "领域模型、业务规则与报表计算", "20%"], ["王晨", "52302042035", "数据导入、安全控制与自动化测试", "20%"], ["朱婷婷", "52302042055", "部署打包、实训报告与答辩材料", "20%"]], [3.0 * cm, 3.0 * cm, 6.0 * cm, 2.7 * cm]),
+    data_table(["成员", "学号", "主要工作", "贡献比例"], [["姜萱萱", "52302042008", "系统架构设计与代码实现、自动化测试", "40%"], ["蓝思钰", "52302042011", "需求分析与产品设计文档整理", "15%"], ["刘晓盼", "52302042019", "数据库设计与技术设计文档整理", "15%"], ["王晨", "52302042035", "测试用例整理与质量验证文档", "15%"], ["朱婷婷", "52302042055", "实训报告排版与答辩材料整理", "15%"]], [3.0 * cm, 3.0 * cm, 6.0 * cm, 2.7 * cm]),
     H1("参考文献"),
     P("[1] 软件系统设计与体系结构综合实训指导书，蚌埠学院计算机与信息工程学院。<br/>[2] Gamma E, Helm R, Johnson R, Vlissides J. Design Patterns. Addison-Wesley, 1994.<br/>[3] Fielding R. Architectural Styles and the Design of Network-based Software Architectures, 2000.<br/>[4] WHATWG. HTML Living Standard. 表单、Dialog 与 Web Storage 相关规范。"),
 ]

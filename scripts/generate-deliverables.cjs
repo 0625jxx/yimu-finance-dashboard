@@ -53,7 +53,54 @@ async function makeDiagrams() {
     <rect class="box" x="730" y="400" rx="20" width="260" height="130"/><text class="label" x="815" y="450">Goal</text><text class="small" x="772" y="490">独立进度与期限</text>
     <rect class="box" x="1050" y="400" rx="20" width="280" height="130"/><text class="label" x="1092" y="450">ImportBatch</text><text class="small" x="1090" y="490">1 ← N 笔导入交易</text>
     <path class="arrow" d="M580 270 L260 385"/><path class="arrow" d="M650 270 L555 385"/><path class="arrow" d="M800 270 L860 385"/><path class="arrow" d="M850 270 L1160 385"/>`);
-  const diagrams = { architecture, observer, dataModel };
+  const sequence = svg(`
+    <text class="title" x="55" y="62">新增交易时序图：一次变更，全链路一致</text>
+    <g font-family="'Microsoft YaHei','Arial',sans-serif" font-size="24" font-weight="700" fill="#17324D">
+      <text x="110" y="112" text-anchor="middle">用户</text>
+      <text x="345" y="112" text-anchor="middle">AppController</text>
+      <text x="580" y="112" text-anchor="middle">FinanceStore</text>
+      <text x="815" y="112" text-anchor="middle">Persistence</text>
+      <text x="1050" y="112" text-anchor="middle">Java API</text>
+      <text x="1285" y="112" text-anchor="middle">SQLite</text>
+    </g>
+    <g stroke="#DCE5E8" stroke-width="2" stroke-dasharray="6,6">
+      <line x1="110" y1="148" x2="110" y2="840"/><line x1="345" y1="148" x2="345" y2="840"/>
+      <line x1="580" y1="148" x2="580" y2="840"/><line x1="815" y1="148" x2="815" y2="840"/>
+      <line x1="1050" y1="148" x2="1050" y2="840"/><line x1="1285" y1="148" x2="1285" y2="840"/>
+    </g>
+    <g font-family="'Microsoft YaHei','Arial',sans-serif" font-size="21" fill="#687D8F">
+      <text x="227" y="198" text-anchor="middle">提交交易表单（类型/金额/账户）</text>
+      <text x="462" y="258" text-anchor="middle">addTransaction(transaction)</text>
+      <text x="697" y="318" text-anchor="middle">save(state)</text>
+      <text x="932" y="378" text-anchor="middle">PUT /api/state</text>
+      <text x="1167" y="438" text-anchor="middle">事务写入规范化表</text>
+      <text x="1167" y="498" text-anchor="middle">提交成功</text>
+      <text x="932" y="558" text-anchor="middle">200 OK</text>
+      <text x="697" y="618" text-anchor="middle">已持久化</text>
+      <text x="462" y="678" text-anchor="middle" fill="#E36A3D" font-weight="700">publish(transaction:added)</text>
+      <text x="462" y="738" text-anchor="middle">render(snapshot)</text>
+      <text x="227" y="798" text-anchor="middle">界面指标同步刷新</text>
+    </g>
+    <g stroke="#4B729B" stroke-width="3" fill="none">
+      <line x1="110" y1="205" x2="345" y2="205" marker-end="url(#a)"/>
+      <line x1="345" y1="265" x2="580" y2="265" marker-end="url(#a)"/>
+      <line x1="580" y1="325" x2="815" y2="325" marker-end="url(#a)"/>
+      <line x1="815" y1="385" x2="1050" y2="385" marker-end="url(#a)"/>
+      <line x1="1050" y1="445" x2="1285" y2="445" marker-end="url(#a)"/>
+    </g>
+    <g stroke="#8CA4B8" stroke-width="3" stroke-dasharray="7,6" fill="none">
+      <line x1="1285" y1="505" x2="1050" y2="505" marker-end="url(#a)"/>
+      <line x1="1050" y1="565" x2="815" y2="565" marker-end="url(#a)"/>
+      <line x1="815" y1="625" x2="580" y2="625" marker-end="url(#a)"/>
+    </g>
+    <g stroke="#E36A3D" stroke-width="4" fill="none">
+      <line x1="580" y1="685" x2="345" y2="685" marker-end="url(#a)"/>
+    </g>
+    <g stroke="#4B729B" stroke-width="3" fill="none">
+      <line x1="345" y1="745" x2="580" y2="745" marker-end="url(#a)"/>
+      <line x1="580" y1="805" x2="110" y2="805" marker-end="url(#a)"/>
+    </g>`, 1400, 860);
+  const diagrams = { architecture, observer, dataModel, sequence };
   for (const [name, markup] of Object.entries(diagrams)) {
     await sharp(Buffer.from(markup)).png().toFile(path.join(assetDir, `${name}.png`));
   }
@@ -80,11 +127,18 @@ const table = (headers, rows, widths) => new Table({
   rows: [new TableRow({ children: headers.map((v, index) => cell(v, true, widths[index])), tableHeader: true }), ...rows.map((row) => new TableRow({ children: row.map((v, index) => cell(v, false, widths[index])) }))],
   borders: { top: { style: BorderStyle.SINGLE, color: colors.line, size: 4 }, bottom: { style: BorderStyle.SINGLE, color: colors.line, size: 4 }, left: { style: BorderStyle.SINGLE, color: colors.line, size: 4 }, right: { style: BorderStyle.SINGLE, color: colors.line, size: 4 }, insideHorizontal: { style: BorderStyle.SINGLE, color: colors.line, size: 3 }, insideVertical: { style: BorderStyle.SINGLE, color: colors.line, size: 3 } },
 });
+const codeBlock = (lines) => lines.map((line) => new Paragraph({
+  children: [new TextRun({ text: line, font: "Consolas", size: 18, color: colors.ink })],
+  shading: { type: ShadingType.CLEAR, fill: "F4F6F8", color: "auto" },
+  spacing: { after: 0, line: 240 },
+  indent: { left: 260, right: 260 },
+}));
 
 async function makeReport() {
   const architecture = path.join(assetDir, "architecture.png");
   const observer = path.join(assetDir, "observer.png");
   const dataModel = path.join(assetDir, "dataModel.png");
+  const sequence = path.join(assetDir, "sequence.png");
   const dashboard = path.join(root, "tests", "artifacts", "dashboard-desktop.png");
   const reports = path.join(root, "tests", "artifacts", "reports-desktop.png");
   const children = [
@@ -149,9 +203,39 @@ async function makeReport() {
     bullet("转账只改变相关账户余额，不进入收入、支出和净现金流统计。"),
     h("4.3 关键业务流程", HeadingLevel.HEADING_2),
     p("新增交易流程为：用户打开表单并选择类型 → Controller 读取并规范化字段 → Store 校验金额和账户引用 → Persistence Adapter 调用 PUT /api/state → Java 服务在 SQLite 事务中更新规范化表 → Store 发布 transaction:added 事件 → Controller 取得新快照 → View 同步刷新余额、看板、预算和报表。"),
+    ...imageParagraph(sequence, 650, 399, "图 4-2  新增交易时序图"),
     h("5 设计模式应用", HeadingLevel.HEADING_1, true),
     h("5.1 观察者模式", HeadingLevel.HEADING_2),
     p("FinanceStore 作为主题维护观察者集合，subscribe 用于订阅，所有成功写操作在持久化后发布事件。AppController 订阅状态变更并调用 DashboardView.render。这样，新增交易等业务操作无需知道有哪些界面组件依赖它，降低了模型与 DOM 的耦合。"),
+    p("关键代码片段如下，完整实现见 src/model/finance-model.js 与 src/controller/app-controller.js。"),
+    ...codeBlock([
+      "// 主题（Subject）：FinanceStore 维护观察者集合，状态变更后发布事件",
+      "const observers = new Set();",
+      "const publish = (event) => {",
+      "  persist(clone(state));",
+      "  observers.forEach((observer) => observer(clone(state), event));",
+      "};",
+      "// 观察者注册与注销接口",
+      "subscribe(observer) {",
+      "  observers.add(observer);",
+      "  return () => observers.delete(observer);",
+      "}",
+      "// 业务写操作成功后发布具名事件",
+      "addTransaction(transaction) {",
+      "  validateTransaction(transaction);",
+      "  state.transactions.unshift({ id: transaction.id, ...clone(transaction) });",
+      "  publish(\"transaction:added\");",
+      "}",
+    ]),
+    p("观察者（Observer）：AppController 启动时订阅 Store，收到事件后立即用最新只读快照刷新全部视图。"),
+    ...codeBlock([
+      "// app-controller.js —— 观察者订阅状态变更",
+      "start() {",
+      "  this.store.subscribe(() => this.render());",
+      "  this.bindEvents();",
+      "  this.render();",
+      "}",
+    ]),
     ...imageParagraph(observer, 650, 325, "图 5-1  观察者模式协作过程"),
     h("5.2 策略化计算与适配点", HeadingLevel.HEADING_2),
     p("账户余额、月度汇总、预算进度、现金流序列和分类结构均实现为独立纯函数，可以视为可替换的计算策略。持久化通过统一 load/save 接口与业务操作隔离，Java 交付形态使用 SQLite，Node 开发形态使用 localStorage 降级。"),
@@ -181,7 +265,7 @@ async function makeReport() {
     p("本项目完成了从需求分析、产品设计、体系结构设计、详细设计到编码、测试和部署的完整实训链路。系统不以静态原型结束，而是交付可直接运行的 Java 程序和配套源代码；核心业务闭环、报表分析、数据治理及安全边界均有实现与测试证据。MVC 使关注点清晰分离，观察者模式保证不同视图对同一状态变更保持一致，整数分和纯函数计算提高了财务数据的正确性与可测试性。"),
     p("后续可以在保持领域接口稳定的基础上增加登录授权、数据库迁移、可视化字段映射、年度预算和多端同步。本次实训说明了体系结构并非形式化图示，而是直接影响代码可读性、变化成本、测试难度和部署可靠性的工程决策。"),
     h("10 小组分工", HeadingLevel.HEADING_1, true),
-    table(["成员", "学号", "主要工作", "贡献比例"], [["蓝思钰", "52302042011", "需求分析、产品方案与总体设计", "20%"], ["姜萱萱", "52302042008", "界面设计、响应式布局与交互实现", "20%"], ["刘晓盼", "52302042019", "领域模型、业务规则与报表计算", "20%"], ["王晨", "52302042035", "数据导入、安全控制与自动化测试", "20%"], ["朱婷婷", "52302042055", "部署打包、实训报告与答辩材料", "20%"]], [1800, 1800, 3900, 1200]),
+    table(["成员", "学号", "主要工作", "贡献比例"], [["姜萱萱", "52302042008", "系统架构设计与代码实现、自动化测试", "40%"], ["蓝思钰", "52302042011", "需求分析与产品设计文档整理", "15%"], ["刘晓盼", "52302042019", "数据库设计与技术设计文档整理", "15%"], ["王晨", "52302042035", "测试用例整理与质量验证文档", "15%"], ["朱婷婷", "52302042055", "实训报告排版与答辩材料整理", "15%"]], [1800, 1800, 3900, 1200]),
     h("参考文献", HeadingLevel.HEADING_1, true),
     p("[1] 软件系统设计与体系结构综合实训指导书，蚌埠学院计算机与信息工程学院。"),
     p("[2] Gamma E, Helm R, Johnson R, Vlissides J. Design Patterns: Elements of Reusable Object-Oriented Software. Addison-Wesley, 1994."),
